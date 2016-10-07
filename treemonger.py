@@ -34,7 +34,7 @@ def main(args):
     width = 800
     height = 600
     rects = compute_rectangles(t, [0, width], [0, height])
-    render_tk(rects)
+    render_tk(rects, width, height, title=os.path.realpath(root))
 
 
 if __name__ == '__main__':

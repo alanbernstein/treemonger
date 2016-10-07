@@ -43,7 +43,7 @@ def main(args):
     width = 800
     height = 600
     rects = compute_rectangles(t, [0, width], [0, height])
-    render_svg(rects)
+    render_svg(rects, width, height)
 
     open_result_in_browser(PORT, PAGE_FILENAME)
 

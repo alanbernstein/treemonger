@@ -12,5 +12,5 @@
 # https://en.wikipedia.org/wiki/User:Cmglee/Dynamic_SVG_for_Wikimedia_projects
 
 
-def render(rects):
+def render(rects, width, height):
     pass
