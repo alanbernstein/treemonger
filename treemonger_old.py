@@ -77,8 +77,8 @@ from numpy import sign
 from panda.debug import debug, pm, pp
 
 
-def ScanCallback():
-    print ScanEntry.get()
+#def ScanCallback():
+#    print ScanEntry.get()
 
 
 def gettree(path):
