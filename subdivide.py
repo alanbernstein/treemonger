@@ -1,4 +1,12 @@
 from utils import format_bytes
+from constants import (max_filesystem_depth,
+                       min_box_size,
+                       text_size,
+                       dir_text_offset,
+                       xpad,
+                       ypad,
+                       )
+
 """
 using, for example, the squarify module is an appealing idea
 but since i want to handle files and directories differently, i'm
@@ -6,16 +14,6 @@ not sure if there is a clean way to use something else
 
 https://github.com/laserson/squarify
 """
-
-
-text_offset_x = 3
-text_offset_y = 3
-dir_text_offset = 6
-xpad = 0
-ypad = 0
-min_box_size = 10
-max_filesystem_depth = 16
-text_size = 8
 
 
 def compute_rectangles(node, xlim, ylim, recurse_level=0, dir_level=0, rects=[]):
