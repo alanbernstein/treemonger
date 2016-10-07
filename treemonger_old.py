@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/local/bin/python
 # tree.py
 # run with:
 #   python tree.py PATH
@@ -30,13 +30,17 @@
 #
 # rewrite with actual design
 # - structure
-#   - class that walks filesystem and gets data
-#   - class that handles the treemapping division algorithm
-#   - class that handles the treemapping layout algorithm  (i think these are too intertwined to be separated)
+#   - walk filesystem and get data
+#   - handle the treemapping division algorithm
+#   - handle the treemapping layout algorithm  (i think these are too intertwined to be separated)
 #     - https://github.com/laserson/squarify for inspiration - then use similar interface to steal examples of making it interactive
 #   - application class to deal with tk
 # - redo GUI
 #   - SVG ala flame graph? (uses SMIL which was deprecated in chrome 2015, prefer something more future proof)
+#     - related but different: http://tympanus.net/codrops/2014/08/19/making-svgs-responsive-with-css/
+#     - http://stackoverflow.com/questions/30965580/deprecated-smil-svg-animation-replaced-with-css-or-web-animations-effects-hover
+#     - https://github.com/webframes/smil2css
+#     - check up on flamegraph in a while and see if they've figured out an alternative - https://github.com/brendangregg/FlameGraph
 #   - js somehow... dont really want to use a pure js library because of the volume of data that is fundamentally local...
 #   - some more modern, native python gui lib
 #     - bokeh
@@ -58,12 +62,19 @@
 # http://bl.ocks.org/ganeshv/6a8e9ada3ab7f2d88022
 # http://www.billdwhite.com/wordpress/2012/12/16/d3-treemap-with-title-headers/
 
+# faster walk: http://benhoyt.com/writings/scandir/
+
+
+import os
+import sys
 from os import listdir, sep
 from os.path import abspath, basename, isdir, isfile, islink, getsize, join
 from sys import argv
 import Tkinter as tk
 from pprint import pprint
 from numpy import sign
+
+from panda.debug import debug, pm, pp
 
 
 def ScanCallback():
@@ -82,9 +93,14 @@ def gettree(path):
 
     size = 0
     if isdir(path):
-        for file in listdir(path):
-            t.append(gettree(path + sep + file))
-            size = size + t[-1][1]
+        try:
+            for file in listdir(path):
+                t.append(gettree(path + sep + file))
+                size = size + t[-1][1]
+        except OSError as exc:
+            # this can be caused by filesystem errors that i don't know how to fix in linux
+            # eg, broken file with no corresponding inode
+            print('ignoring OSError at %s' % path)
     elif isfile(path):
         size = getsize(path)
 
@@ -279,7 +295,8 @@ def drawtree(t, canv, xlim, ylim, recurse_level=0, dir_level=0):
 def filecompare(A, B):
     # comparison operator for use in sorting list of files
     # return A[1] == B[1]
-    return int(sign(A[1] - B[1]))
+    # return int(sign(A[1] - B[1]))
+    return 1 if A[1] > B[1] else -1
 
 
 _abbrevs = [
@@ -375,6 +392,12 @@ def on_keyup(ev):
     if ev.keysym == 'Left':
         print('not yet implemented: navigate left in map')
 
+
+def reverse_path(p):
+    parts = p.split(os.path.sep)
+    return os.path.sep.join(parts[::-1])
+
+
 # def main():
 # setup window and canvas
 
@@ -396,11 +419,15 @@ h = screen_height / 2           # default window height
 x = (screen_width / 2) - (w / 2)  # default window x position (centered)
 y = (screen_height / 2) - (h / 2)  # default window y position (centered)
 root.geometry('%dx%d+%d+%d' % (w, h, x, y))
-root.title('treemonger - %s' % treepath)
+
+
+root.title('%s' % reverse_path(abspath(treepath)))
 
 # this doesnt seem to work
-# root.iconbitmap('/home/alan/Dropbox/src/py/projects/treemonger/treemonger-icon.ico')
-# root.iconbitmap('treemonger-icon.png')
+# icon_fname = 'treemonger-icon.ico'
+# icon_fullpath = os.getenv('SRC') + '/py/treemonger/' + icon_fname
+# print(os.path.exists(icon_fname))
+# root.iconbitmap(bitmap=icon_fname)
 
 
 # not sure if w and h do anything here
@@ -418,11 +445,14 @@ canv.bind("<Button-4>", on_click4)
 canv.bind("<Button-5>", on_click5)
 root.bind("<KeyPress>", on_keydown)
 root.bind("<KeyRelease>", on_keyup)
+
 # Button(root, text='Quit', command=root.quit).grid(row=1, column=0)
 # Button(root, text='Scan', command=ScanCallback).grid(row=1, column=1)
 # ScanEntry = Entry(root, width=50)
 # ScanEntry.insert(0,'asfasd')
 # ScanEntry.grid(row=1, column=2)
+
+
 
 
 # tree stuff
