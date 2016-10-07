@@ -1,4 +1,4 @@
-from .utils import format_bytes
+from utils import format_bytes
 """
 using, for example, the squarify module is an appealing idea
 but since i want to handle files and directories differently, i'm

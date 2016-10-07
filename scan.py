@@ -1,7 +1,7 @@
 import os
 import magic
 
-from .utils import format_bytes
+from utils import format_bytes
 
 
 class TreeNode(object):
