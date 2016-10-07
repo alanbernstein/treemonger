@@ -1,11 +1,12 @@
+from .utils import format_bytes
 """
 using, for example, the squarify module is an appealing idea
 but since i want to handle files and directories differently, i'm
 not sure if there is a clean way to use something else
 
 https://github.com/laserson/squarify
-
 """
+
 
 text_offset_x = 3
 text_offset_y = 3
@@ -46,7 +47,7 @@ def compute_rectangles(node, xlim, ylim, recurse_level=0, dir_level=0, rects=[])
         # - define a box and text
         # - if directory, compute new padded bounds for child boxes
         txt = node.path if recurse_level == 0 else node.name
-        txt += ' (%s)' % node.size  # TODO use format_bytes
+        txt += ' (%s)' % format_bytes(node.size)
 
         rect = {'x': xlim[0] + 1,
                 'y': ylim[0] + 1,
