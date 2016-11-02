@@ -5,3 +5,4 @@ inspired by http://edgerunner.com/spacemonger, since every other visual space ma
 
 example:
 ![alt tag](example.png)
+[[./example.png]]
