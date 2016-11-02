@@ -1,3 +1,7 @@
 * treemonger
 
 inspired by http://edgerunner.com/spacemonger, since every other visual space mapping program uses a bad subdivision algorithm, but spacemonger is windows only.
+
+
+example:
+![alt tag](example.png)
