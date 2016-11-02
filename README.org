@@ -2,6 +2,7 @@
 
 inspired by http://edgerunner.com/spacemonger, since every other visual space mapping program uses a bad subdivision algorithm, but spacemonger is windows only.
 
+there are some outstanding user interface features, and the rendering/clipping needs some work. otherwise, this is currently highly usable.
 
 example:
 [[./example.png]]
