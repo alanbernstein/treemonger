@@ -3,12 +3,19 @@ import sys
 import os
 import socket
 import argparse
+from datetime import datetime as dt
 from collections import defaultdict
 
+from utils import format_bytes
 from scan import get_directory_tree, print_directory_tree, tree_to_dict
 from subdivide import compute_rectangles
 #from renderers.tk import render as render_tk
 from renderers.tk import render_class
+
+# MAJOR TODOs:
+# - fix border colors
+# - fix text placement
+# - switch out the ~/cmd/treemonger link to this one
 
 # plan
 # - scan filesystem and create JSON file with full treemap definition
@@ -21,7 +28,12 @@ from renderers.tk import render_class
 def main(args):
     root, options = parse_args(args)
     print(options)
+
+    t0 = dt.now()
     t = get_directory_tree(root, exclude_dirs=options['exclude-dirs'])
+    t1 = dt.now()
+    import ipdb; ipdb.set_trace()
+    print('%f sec to scan %fB' % ((t1 - t0).seconds + (t1 - t0).microseconds/1e6, format_bytes(t.size)))
 
     data = {'tree': tree_to_dict(t),
             'root': os.path.realpath(root),

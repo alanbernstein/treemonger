@@ -67,6 +67,7 @@
 
 import os
 import sys
+from datetime import datetime as dt
 from os import listdir, sep
 from os.path import abspath, basename, isdir, isfile, islink, getsize, join
 from sys import argv
@@ -456,11 +457,17 @@ root.bind("<KeyRelease>", on_keyup)
 
 
 # tree stuff
+
 path = abspath(treepath)
+t0 = dt.now()
 t = gettree(path)
+t1 = dt.now()
 # printtree(t)
 if isdir(path) & 1:
     drawtree(t, canv, [3, w - 4], [3, h - 4])
+    t2 = dt.now()
+    print('%f sec to scan' % ((t1 - t0).seconds + (t1 - t0).microseconds/1e6))
+    print('%f sec to draw' % ((t2 - t1).seconds + (t1 - t0).microseconds/1e6))
     root.mainloop()
 
 else:
