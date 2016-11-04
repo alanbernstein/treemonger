@@ -32,8 +32,9 @@ def main(args):
     t0 = dt.now()
     t = get_directory_tree(root, exclude_dirs=options['exclude-dirs'])
     t1 = dt.now()
-    import ipdb; ipdb.set_trace()
-    print('%f sec to scan %fB' % ((t1 - t0).seconds + (t1 - t0).microseconds/1e6, format_bytes(t.size)))
+
+    delta_t = ((t1 - t0).seconds + (t1 - t0).microseconds)/1e6
+    print('%f sec to scan %s / %s files' % (delta_t, format_bytes(t.size), get_total_children(t)))
 
     data = {'tree': tree_to_dict(t),
             'root': os.path.realpath(root),
@@ -49,6 +50,13 @@ def main(args):
     # render_class(rects, width, height, title=os.path.realpath(root))
 
     render_class(t, compute_rectangles, width, height, title=os.path.realpath(root))
+
+
+def get_total_children(t):
+    if t.children:
+        return sum([get_total_children(c) for c in t.children])
+    else:
+        return 1
 
 
 def parse_args(args):

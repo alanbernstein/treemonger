@@ -454,6 +454,11 @@ root.bind("<KeyRelease>", on_keyup)
 # ScanEntry.grid(row=1, column=2)
 
 
+def get_total_children(t):
+    if len(t) > 2:
+        return sum([get_total_children(c) for c in t[2:]])
+    else:
+        return 1
 
 
 # tree stuff
@@ -461,13 +466,21 @@ root.bind("<KeyRelease>", on_keyup)
 path = abspath(treepath)
 t0 = dt.now()
 t = gettree(path)
+
+from utils import format_bytes
+
 t1 = dt.now()
 # printtree(t)
 if isdir(path) & 1:
     drawtree(t, canv, [3, w - 4], [3, h - 4])
     t2 = dt.now()
-    print('%f sec to scan' % ((t1 - t0).seconds + (t1 - t0).microseconds/1e6))
-    print('%f sec to draw' % ((t2 - t1).seconds + (t1 - t0).microseconds/1e6))
+    delta_t = ((t1 - t0).seconds + (t1 - t0).microseconds)/1e6
+    print('%f sec to scan %s / %s files' % (delta_t, format_bytes(t[1]), get_total_children(t)))
+    print('%f sec to draw' % ((t2 - t1).seconds + (t2 - t1).microseconds/1e6))
+    root.wm_attributes("-topmost", 1)
+    root.focus_force()
+    root.lift()
+    root.after(100, lambda: root.focus_force())
     root.mainloop()
 
 else:
