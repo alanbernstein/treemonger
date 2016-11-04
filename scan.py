@@ -30,7 +30,10 @@ class TreeNode(object):
             info_list.append(details)
 
         info = ', '.join(info_list)
-        return '%s: %s' % (self.name, info)
+        return '<%s: %s>' % (self.name, info)
+
+    def __repr__(self):
+        return self.__str__()
 
 
 def print_directory_tree(t, L=0, max=3):
