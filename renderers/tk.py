@@ -46,7 +46,8 @@ class TreemongerAppOld(object):
     def render(self):
         # TODO: these values should be normalized
         # but the subdivision depends on the aspect ratio
-        # so the division has to be redone from the directory tree on every resize
+        # so the division has to be redone from the directory tree on every resize.
+        # if i only use this in half-screen and full-screen sizes, it will never matter...
         for rect in self.rects:
             x = rect['x']
             y = rect['y']
@@ -94,7 +95,8 @@ class TreemongerApp(object):
                                                     fill="white", outline='black')
         self.canv.bind("<Configure>", self.on_resize)
         self.canv.bind("<Button-1>", self.on_click1)
-
+        self.canv.bind("<KeyPress>", self.on_keydown)
+        self.canv.bind("<KeyRelease>", self.on_keyup)
         self.frame.pack()
 
     def render(self, width=None, height=None):
@@ -118,12 +120,14 @@ class TreemongerApp(object):
             if rect['type'] == 'directory':
                 text_x = x + text_offset_x
                 text_y = y + text_offset_y
+                anchor = tk.NW
             elif rect['type'] == 'file':
                 text_x = x + dx / 2
                 text_y = y + dy / 2
+                anchor = tk.CENTER
 
             self.canv.create_text(text_x, text_y, text=rect['text'], fill="black",
-                                  anchor=tk.NW, font=("Helvectica", text_size))
+                                  anchor=anchor, font=("Helvectica", text_size))
 
     def on_click1(self, ev):
         print('left clicked: (%d, %d), (%d, %d)' %
@@ -133,6 +137,27 @@ class TreemongerApp(object):
         print('resized: %d %d' % (ev.width, ev.height))
         # self.canv.coords(self.root_rect, 1, 1, ev.width - 2, ev.height - 2)
         self.render(ev.width, ev.height)
+
+    def on_keydown(self, ev):
+        print('keydown: %s' % ev.char)
+
+    def on_keyup(self, ev):
+        print('keyup: %s' % ev.char)
+        if ev.char == 'q':
+            exit()
+        if ev.char == 'r':
+            print('not yet implemented: refresh')
+            # requires combining everything into one big App class...
+        if ev.char == 'u':
+            print('not yet implemented: go up in the directory tree')
+        if ev.keysym == 'Up':
+            print('not yet implemented: navigate up in map')
+        if ev.keysym == 'Down':
+            print('not yet implemented: navigate down in map')
+        if ev.keysym == 'Right':
+            print('not yet implemented: navigate right in map')
+        if ev.keysym == 'Left':
+            print('not yet implemented: navigate left in map')
 
 
 def render_class(tree, compute_func, title, width=None, height=None):

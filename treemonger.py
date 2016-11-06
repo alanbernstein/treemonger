@@ -13,7 +13,7 @@ from subdivide import compute_rectangles
 from renderers.tk import render_class
 
 # MAJOR TODOs:
-# - fix text placement
+# - fix text clipping
 # - switch out the ~/cmd/treemonger link to this one
 
 # plan
