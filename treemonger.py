@@ -13,7 +13,6 @@ from subdivide import compute_rectangles
 from renderers.tk import render_class
 
 # MAJOR TODOs:
-# - fix border colors
 # - fix text placement
 # - switch out the ~/cmd/treemonger link to this one
 
@@ -33,7 +32,7 @@ def main(args):
     t = get_directory_tree(root, exclude_dirs=options['exclude-dirs'])
     t1 = dt.now()
 
-    delta_t = ((t1 - t0).seconds + (t1 - t0).microseconds)/1e6
+    delta_t = (t1 - t0).seconds + (t1 - t0).microseconds/1e6
     print('%f sec to scan %s / %s files' % (delta_t, format_bytes(t.size), get_total_children(t)))
 
     data = {'tree': tree_to_dict(t),
@@ -42,14 +41,11 @@ def main(args):
     # pprint(data)
     # print(jsonpickle.encode(t))
     # print_directory_tree(t)
-
-    width = 800
-    height = 600
     # rects = compute_rectangles(t, [0, width], [0, height])
     # render_tk(rects, width, height, title=os.path.realpath(root))
     # render_class(rects, width, height, title=os.path.realpath(root))
 
-    render_class(t, compute_rectangles, width, height, title=os.path.realpath(root))
+    render_class(t, compute_rectangles, title=os.path.realpath(root))
 
 
 def get_total_children(t):

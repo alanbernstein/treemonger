@@ -474,7 +474,7 @@ t1 = dt.now()
 if isdir(path) & 1:
     drawtree(t, canv, [3, w - 4], [3, h - 4])
     t2 = dt.now()
-    delta_t = ((t1 - t0).seconds + (t1 - t0).microseconds)/1e6
+    delta_t = (t1 - t0).seconds + (t1 - t0).microseconds/1e6
     print('%f sec to scan %s / %s files' % (delta_t, format_bytes(t[1]), get_total_children(t)))
     print('%f sec to draw' % ((t2 - t1).seconds + (t2 - t1).microseconds/1e6))
     root.wm_attributes("-topmost", 1)
