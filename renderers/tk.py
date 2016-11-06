@@ -1,5 +1,6 @@
 import Tkinter as tk
 
+from utils import shorten
 from .colormap import colormap
 from constants import (text_size,
                        text_offset_x,
@@ -73,7 +74,11 @@ class TreemongerAppOld(object):
 
 
 class TreemongerApp(object):
-    def __init__(self, master, width, height, title, tree, compute_func):
+    def __init__(self, master, title, tree, compute_func, width=None, height=None):
+
+        width = width or master.winfo_screenwidth()/2
+        height = height or master.winfo_screenheight()/2
+
         self.master = master
         self.tree = tree
         self.compute_func = compute_func
@@ -99,7 +104,13 @@ class TreemongerApp(object):
         self.canv.bind("<KeyRelease>", self.on_keyup)
         self.frame.pack()
 
-    def render(self, width=None, height=None):
+    def render(self, *args, **kwargs):
+        self.render_canvas(*args, **kwargs)
+
+    def render_label(self, width=None, height=None):
+        pass
+
+    def render_canvas(self, width=None, height=None):
         width = width or self.width
         height = height or self.height
         print('rendering %dx%d' % (width, height))
@@ -126,7 +137,8 @@ class TreemongerApp(object):
                 text_y = y + dy / 2
                 anchor = tk.CENTER
 
-            self.canv.create_text(text_x, text_y, text=rect['text'], fill="black",
+            clipped_text = shorten(rect['text'], dx, text_size)
+            self.canv.create_text(text_x, text_y, text=clipped_text, fill="black",
                                   anchor=anchor, font=("Helvectica", text_size))
 
     def on_click1(self, ev):
@@ -166,10 +178,7 @@ def render_class(tree, compute_func, title, width=None, height=None):
     this allows recalculation on resize etc
     """
     root = tk.Tk()
-    width = width or root.winfo_screenwidth()/2
-    height = height or root.winfo_screenheight()/2
-
-    app = TreemongerApp(root, width, height, title, tree, compute_func)
+    app = TreemongerApp(root, title, tree, compute_func, width, height)
     app.render()
     root.mainloop()
 

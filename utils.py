@@ -24,3 +24,14 @@ def format_bytes(size):
 def reverse_path(p):
     parts = p.split(os.path.sep)
     return os.path.sep.join(parts[::-1])
+
+
+def shorten(string, dx, text_size):
+    """ should shorten a string to fit in length diff(xlim) pixels """
+    # http://stackoverflow.com/questions/1123463/clipping-text-in-python-tkinter
+
+    if (len(string)-5) * text_size > dx:
+        newLen = dx / text_size + 5
+        string = string[0:newLen - 1]
+
+    return string
