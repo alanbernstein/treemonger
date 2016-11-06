@@ -112,8 +112,8 @@ class TreemongerApp(object):
             cs = colormap[d]
 
             self.canv.create_rectangle(x, y, x+dx, y+dy, width=1, fill=cs[0], outline='black')
-            # self.canv.create_line(x, y+dy, x, y, x+dx, y, fill=cs[1])
-            # self.canv.create_line(x, y+dy, x+dx, y+dy, x+dx, y, fill=cs[2])
+            self.canv.create_line(x+1, y+dy-1, x+1, y+1, x+dx-1, y+1, fill=cs[1])
+            self.canv.create_line(x+1, y+dy-1, x+dx-1, y+dy-1, x+dx-1, y+1, fill=cs[2])
 
             if rect['type'] == 'directory':
                 text_x = x + text_offset_x
@@ -135,12 +135,15 @@ class TreemongerApp(object):
         self.render(ev.width, ev.height)
 
 
-def render_class(tree, compute_func, width, height, title):
+def render_class(tree, compute_func, title, width=None, height=None):
     """
     similar to render_class, but accepts the original tree rather than the computed rectangles
     this allows recalculation on resize etc
     """
     root = tk.Tk()
+    width = width or root.winfo_screenwidth()/2
+    height = height or root.winfo_screenheight()/2
+
     app = TreemongerApp(root, width, height, title, tree, compute_func)
     app.render()
     root.mainloop()
