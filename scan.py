@@ -54,7 +54,7 @@ def tree_to_dict(t):
     }
 
 
-def get_directory_tree(path, exclude_dirs=[], slow_details=False):
+def get_directory_tree(path, exclude_dirs=[], exclude_files=[], exclude_filters=[], slow_details=False):
     base = os.path.basename(path)
     t = TreeNode(path)
     size = 0
@@ -68,7 +68,16 @@ def get_directory_tree(path, exclude_dirs=[], slow_details=False):
         if base in exclude_dirs:
             return None
         for file in os.listdir(path):
-            subtree = get_directory_tree(path + os.sep + file, exclude_dirs)
+            skip = False
+            for filt in exclude_filters:
+                if filt in file:
+                    skip = True
+                    break
+            if skip:
+                continue
+            if file in exclude_files:
+                continue
+            subtree = get_directory_tree(path + os.sep + file, exclude_dirs, exclude_files, exclude_filters)
             if subtree:
                 t.children.append(subtree)
                 size += t.children[-1].size

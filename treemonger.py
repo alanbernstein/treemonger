@@ -1,4 +1,13 @@
-#!/usr/local/bin/python
+#!/usr/bin/python
+"""
+treemonger [options] [path]
+path:     optional, defaults to PWD
+options:  optional
+- --exclude-dir=dirname  OR  -d=dirname  # exclude directory by name
+- --exclude-file=filename                # exclude file by name
+- --exclude-filter=filter                # exclude file by substring match
+
+"""
 import sys
 import os
 import socket
@@ -29,7 +38,12 @@ def main(args):
     print(options)
 
     t0 = dt.now()
-    t = get_directory_tree(root, exclude_dirs=options['exclude-dirs'])
+    t = get_directory_tree(
+        root,
+        exclude_dirs=options['exclude-dirs'],
+        exclude_files=options['exclude-files'],
+        exclude_filters=options['exclude-filters'],
+    )
     t1 = dt.now()
 
     delta_t = (t1 - t0).seconds + (t1 - t0).microseconds/1e6
@@ -58,7 +72,11 @@ def get_total_children(t):
 def parse_args(args):
     root = '.'
     flags = []
-    options = {'exclude-dirs': []}
+    options = {
+        'exclude-dirs': [],
+        'exclude-files': [],
+        'exclude-filters': [],
+    }
     if len(args) == 1:
         print('using pwd')
     else:
@@ -67,6 +85,10 @@ def parse_args(args):
                 flags.append(arg)
                 if arg.startswith('--exclude-dir=') or arg.startswith('-d='):
                     options['exclude-dirs'].append(arg.split('=')[1])
+                if arg.startswith('--exclude-file='):
+                    options['exclude-files'].append(arg.split('=')[1])
+                if arg.startswith('--exclude-filter='):
+                    options['exclude-filters'].append(arg.split('=')[1])
             else:
                 root = arg
 
