@@ -62,11 +62,14 @@ def _get_directory_tree(sd, exclude_dirs=[], slow_details=False):
         # directory
         if sd.path in exclude_dirs:
             return None
-        for file in os.scandir(sd.path):
-            subtree = _get_directory_tree(file, exclude_dirs)
-            if subtree:
-                t.children.append(subtree)
-                size += t.children[-1].size
+        try:
+            for file in os.scandir(sd.path):
+                subtree = _get_directory_tree(file, exclude_dirs)
+                if subtree:
+                    t.children.append(subtree)
+                    size += t.children[-1].size
+        except PermissionError:
+            print("failed to access " + sd.path)
 
     else:
         # file
