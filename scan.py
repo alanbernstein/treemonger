@@ -54,34 +54,38 @@ def tree_to_dict(t):
     }
 
 
-def get_directory_tree(path, exclude_dirs=[], slow_details=False):
-    base = os.path.basename(path)
-    t = TreeNode(path)
+def _get_directory_tree(sd, exclude_dirs=[], slow_details=False):
+    t = TreeNode(sd.path)
     size = 0
 
-    if os.path.islink(path):
-        # symlink
-        pass
-
-    elif os.path.isdir(path):
+    if sd.is_dir(follow_symlinks=False):
         # directory
-        if base in exclude_dirs:
+        if sd.path in exclude_dirs:
             return None
-        for file in os.listdir(path):
-            subtree = get_directory_tree(path + os.sep + file, exclude_dirs)
+        for file in os.scandir(sd.path):
+            subtree = _get_directory_tree(file, exclude_dirs)
             if subtree:
                 t.children.append(subtree)
                 size += t.children[-1].size
 
-    elif os.path.isfile(path):
+    else:
         # file
-        size = os.path.getsize(path)
+        size = sd.stat(follow_symlinks=False).st_size
         if slow_details:
-            t.details = get_file_details(path)
+            t.details = get_file_details(sd.path)
 
     t.size = size
     return t
 
+def get_directory_tree(path, exclude_dirs=[], slow_details=False):
+    t = TreeNode(path)
+    sd = os.scandir(path) 
+    i = 0
+    for file in sd:
+        t.children.append(_get_directory_tree(file, exclude_dirs))
+        t.size += t.children[-1].size
+        i+=1
+    return t
 
 def get_file_details(path):
     ftype = magic.from_file(path).lower()
