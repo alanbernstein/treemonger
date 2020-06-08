@@ -1,4 +1,5 @@
 import Tkinter as tk
+import sys
 
 from utils import shorten
 from .colormap import colormap
@@ -73,6 +74,9 @@ class TreemongerAppOld(object):
                                   anchor=tk.NW, font=("Helvectica", text_size))
 
 
+# TODO: maybe the compute_rectangles function should add rect positions to the tree struct directly
+# then the mouse click hit test can retrieve the full struct directly
+
 class TreemongerApp(object):
     def __init__(self, master, title, tree, compute_func, width=None, height=None):
 
@@ -99,51 +103,67 @@ class TreemongerApp(object):
         self.root_rect = self.canv.create_rectangle(0, 0, 0, 0, width=1,
                                                     fill="white", outline='black')
         self.canv.bind("<Configure>", self.on_resize)
+        self.master.bind("<KeyPress>", self.on_keydown)
+        self.master.bind("<KeyRelease>", self.on_keyup)
         self.canv.bind("<Button-1>", self.on_click1)
-        self.canv.bind("<KeyPress>", self.on_keydown)
-        self.canv.bind("<KeyRelease>", self.on_keyup)
         self.frame.pack()
 
-    def render(self, *args, **kwargs):
-        self.render_canvas(*args, **kwargs)
-
-    def render_label(self, width=None, height=None):
-        pass
-
-    def render_canvas(self, width=None, height=None):
+    def render(self, width=None, height=None):
         width = width or self.width
         height = height or self.height
         print('rendering %dx%d' % (width, height))
         self.rects = self.compute_func(self.tree, [0, width], [0, height])
         for rect in self.rects:
-            x = rect['x']
-            y = rect['y']
-            dx = rect['dx']
-            dy = rect['dy']
-            d = rect['depth']
-            d = d % len(colormap)
-            cs = colormap[d]
+            self.render_rect(rect)
 
-            self.canv.create_rectangle(x, y, x+dx, y+dy, width=1, fill=cs[0], outline='black')
-            self.canv.create_line(x+1, y+dy-1, x+1, y+1, x+dx-1, y+1, fill=cs[1])
-            self.canv.create_line(x+1, y+dy-1, x+dx-1, y+dy-1, x+dx-1, y+1, fill=cs[2])
+    def render_label(self, rect):
+        # TODO: variable font size here?
+        x = rect['x']
+        y = rect['y']
+        dx = rect['dx']
+        dy = rect['dy']
+        d = rect['depth']
+        d = d % len(colormap)
+        cs = colormap[d]
 
-            if rect['type'] == 'directory':
-                text_x = x + text_offset_x
-                text_y = y + text_offset_y
-                anchor = tk.NW
-            elif rect['type'] == 'file':
-                text_x = x + dx / 2
-                text_y = y + dy / 2
-                anchor = tk.CENTER
+    def render_rect(self, rect):
+        x = rect['x']
+        y = rect['y']
+        dx = rect['dx']
+        dy = rect['dy']
+        d = rect['depth']
+        d = d % len(colormap)
+        cs = colormap[d]
 
-            clipped_text = shorten(rect['text'], dx, text_size)
-            self.canv.create_text(text_x, text_y, text=clipped_text, fill="black",
-                                  anchor=anchor, font=("Helvectica", text_size))
+        self.canv.create_rectangle(x, y, x+dx, y+dy, width=1, fill=cs[0], outline='black')
+        self.canv.create_line(x+1, y+dy-1, x+1, y+1, x+dx-1, y+1, fill=cs[1])
+        self.canv.create_line(x+1, y+dy-1, x+dx-1, y+dy-1, x+dx-1, y+1, fill=cs[2])
+
+        if rect['type'] == 'directory':
+            text_x = x + text_offset_x
+            text_y = y + text_offset_y
+            anchor = tk.NW
+        elif rect['type'] == 'file':
+            text_x = x + dx / 2
+            text_y = y + dy / 2
+            anchor = tk.CENTER
+
+        clipped_text = shorten(rect['text'], dx, text_size)
+        self.canv.create_text(text_x, text_y, text=clipped_text, fill="black",
+                              anchor=anchor, font=("Helvectica", text_size))
+
+    def find_rect(self, x, y):
+        # TODO: it would be really nice if the rectangles and the tree nodes
+        # were the same objects, so i could just traverse the tree right here...
+        for rect in self.rects[::-1]:
+            if rect['x'] <= x <= rect['x'] + rect['dx'] and rect['y'] <= y <= rect['y'] + rect['dy']:
+                return rect
 
     def on_click1(self, ev):
         print('left clicked: (%d, %d), (%d, %d)' %
               (ev.x, ev.y, ev.x_root, ev.y_root))
+        rect = self.find_rect(ev.x, ev.y)
+        print('%s (%s)' %(rect['path'], rect['bytes']))
 
     def on_resize(self, ev):
         print('resized: %d %d' % (ev.width, ev.height))
@@ -156,10 +176,14 @@ class TreemongerApp(object):
     def on_keyup(self, ev):
         print('keyup: %s' % ev.char)
         if ev.char == 'q':
-            exit()
+            sys.exit(0)
         if ev.char == 'r':
             print('not yet implemented: refresh')
-            # requires combining everything into one big App class...
+            # requires combining everything into one big App class..., so the tree can get rescanned
+        if ev.char == 'm':
+            print('not yet implemented: mode cycle')
+            # 0. total size
+            # 1. total descendants
         if ev.char == 'u':
             print('not yet implemented: go up in the directory tree')
         if ev.keysym == 'Up':
