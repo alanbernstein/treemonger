@@ -64,6 +64,13 @@ def tree_to_dict(t):
     }
 
 
+def dict_to_tree(d):
+    t = TreeNode(d['path'], d['size'])
+    t.details = d['details']
+    t.children = [dict_to_tree(c) for c in d['children']]
+    return t
+
+
 def get_directory_tree(path, exclude_dirs=[], exclude_files=[], exclude_filters=[], slow_details=False):
     base = os.path.basename(path)
     t = TreeNode(path)
