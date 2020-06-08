@@ -31,7 +31,8 @@ def compute_rectangles(node, xlim, ylim, recurse_level=0, dir_level=0, rects=[])
 
     if (dir_level > max_filesystem_depth or
         xlim[1] - xlim[0] < min_box_size or
-        ylim[1] - ylim[0] < min_box_size):
+        ylim[1] - ylim[0] < min_box_size or
+        type(node) is not list and 'hide' in node.details):
         return
 
     if type(node) == list:
@@ -52,8 +53,10 @@ def compute_rectangles(node, xlim, ylim, recurse_level=0, dir_level=0, rects=[])
                 'dx': xlim[1] - xlim[0],
                 'dy': ylim[1] - ylim[0],
                 'depth': dir_level,
+                'bytes': format_bytes(node.size),
                 'text': txt,
                 'type': node_type,
+                'path': node.path,
                 }
         rects.append(rect)
 
