@@ -1,5 +1,10 @@
 import os
-import magic
+try:
+    import magic
+    _use_magic = True
+except:
+    print('magic not available')
+    _use_magic = False
 
 from utils import format_bytes
 
@@ -14,8 +19,13 @@ class TreeNode(object):
     @property
     def name(self):
         name = os.path.basename(self.path)
-        if os.path.isdir(self.path):
-            name += os.sep
+        try:
+            if os.path.isdir(self.path.encode('utf8')):
+                name += os.sep
+        except UnicodeDecodeError as exc:
+            print(exc)
+            import ipdb; ipdb.set_trace()
+
         return name
 
     def __str__(self):
@@ -93,10 +103,11 @@ def get_directory_tree(path, exclude_dirs=[], exclude_files=[], exclude_filters=
 
 
 def get_file_details(path):
-    ftype = magic.from_file(path).lower()
     details = {}
-    if 'ascii' in ftype:
-        details['lines'] = get_line_count(path)
+    if _use_magic:
+        ftype = magic.from_file(path).lower()
+        if 'ascii' in ftype:
+            details['lines'] = get_line_count(path)
 
     return details
 
