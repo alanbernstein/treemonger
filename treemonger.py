@@ -34,7 +34,7 @@ from renderers.tk import render_class
 # - html page loads json file from local server
 #   - this is new to me, but very similar to mike bostock d3.js examples
 
-archive_base_path = os.getenv('$HOME') + '/treemonger'
+archive_base_path = os.getenv('HOME') + '/treemonger'
 
 def main(args):
     root, options = parse_args(args)
