@@ -1,4 +1,4 @@
-import Tkinter as tk
+import tkinter as tk
 import sys
 
 from utils import shorten
