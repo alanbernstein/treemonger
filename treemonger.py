@@ -36,11 +36,12 @@ from renderers.tk import render_class
 
 archive_base_path = os.getenv('HOME') + '/treemonger'
 
+
 def main(args):
     root, options = parse_args(args)
     print(options)
 
-    save_to_archive = False
+    save_to_archive = True
     if 'file' in options:
         with open(options['file'], 'r') as f:
             data = json.load(f)
@@ -59,17 +60,23 @@ def main(args):
         t1 = dt.now()
 
         delta_t = (t1 - t0).seconds + (t1 - t0).microseconds/1e6
-        print('%f sec to scan %s / %s files' % (delta_t, format_bytes(t.size), get_total_children(t)))
+        print('%f sec to scan %s / %s files' %
+              (delta_t, format_bytes(t.size), get_total_children(t)))
 
     if save_to_archive:
+        now = dt.strftime(dt.now(), '%Y%m%d-%H%M%S')
         data = {
             'tree': tree_to_dict(t),
             'root': os.path.realpath(root),
             'host': os.getenv('MACHINE', socket.gethostname()),
             'options': options,
+            'scan_timestamp': now,
+            'scan_duration_seconds': delta_t,
         }
 
-        now = dt.strftime(dt.now(), '%Y%m%d-%H%M%S')
+        if data['root'] == '/':
+            # prevent clobber
+            data['root'] = 'root'
         archive_basename = data['root'][1:].replace('/', '-') + '-' + now
         archive_path = archive_base_path + '/' + data['host']
         archive_filename = archive_path + '/' + archive_basename
@@ -81,7 +88,6 @@ def main(args):
                 json.dump(data, f)
         except Exception as exc:
             print(exc)
-
 
     # print(jsonpickle.encode(t))
     # print_directory_tree(t)
@@ -138,6 +144,5 @@ if __name__ == '__main__':
         parser.add_argument('-d', '--exclude-dir', default=[])
         args = parser.parse_args()
         print(args)
-
 
     main(sys.argv)

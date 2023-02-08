@@ -3,7 +3,9 @@ try:
     import magic
     _use_magic = True
 except:
-    print('magic not available')
+    print('magic not available, try:')
+    print('  `brew install libmagic` and `pip3 install python-magic` (mac)')
+    print('  `sudo apt-get install libmagic1` and `pip3 install python-magic` (linux)')
     _use_magic = False
 
 from utils import format_bytes
@@ -24,7 +26,8 @@ class TreeNode(object):
                 name += os.sep
         except UnicodeDecodeError as exc:
             print(exc)
-            import ipdb; ipdb.set_trace()
+            import ipdb
+            ipdb.set_trace()
 
         return name
 
@@ -72,19 +75,52 @@ def dict_to_tree(d):
 
 
 def get_directory_tree(path, exclude_dirs=[], exclude_files=[], exclude_filters=[], slow_details=False):
+    realpath = os.path.realpath(path)
     base = os.path.basename(path)
     t = TreeNode(path)
     size = 0
 
     if os.path.islink(path):
         # symlink
-        pass
+        t.details['skip'] = 'symlink'
+        return t
+
+    if realpath == '/System/Volumes/Data':
+        # hardcoding this because I don't know how to detect it
+        print('skip macOS data volume secret link %s' % path)
+        t.details['skip'] = 'volume'
+        return t
+
+    if not (realpath == '/') and os.path.ismount(realpath):
+        # different filesystem, probably don't want to scan
+        print('skip mount %s' % path)
+        t.details['skip'] = 'mount'
+        return t
 
     elif os.path.isdir(path):
         # directory
         if base in exclude_dirs:
-            return None
-        for file in os.listdir(path):
+            t.details['skip'] = 'exclude_dir'
+            return t
+        try:
+            files = os.listdir(path)
+        except Exception as exc:
+            t.details['skip'] = str(exc)
+            # exc.errno = 13
+            # exc.filename = /usr/sbin/authserver'
+            # exc.strerror = 'Permission denied'
+            if 'Library' in path:
+                # probably an apple permission error, don't need to print each one
+                # TODO: accumulate the errors and print a count
+                # examples:
+                # [Errno 1] Operation not permitted: './System/Volumes/Data/private/var/networkd/db'
+                # [Errno 13] Permission denied: './System/Volumes/Data/private/var/install'
+                pass
+            else:
+                print('skipping %s' % (exc))
+            return t
+
+        for file in files:
             skip = False
             for filt in exclude_filters:
                 if filt in file:
@@ -94,7 +130,8 @@ def get_directory_tree(path, exclude_dirs=[], exclude_files=[], exclude_filters=
                 continue
             if file in exclude_files:
                 continue
-            subtree = get_directory_tree(path + os.sep + file, exclude_dirs, exclude_files, exclude_filters)
+            subtree = get_directory_tree(
+                path + os.sep + file, exclude_dirs, exclude_files, exclude_filters)
             if subtree:
                 t.children.append(subtree)
                 size += t.children[-1].size
@@ -162,7 +199,8 @@ def get_treemap_dict(path):
             t['children'] = []
             # for file in scandir(path)  # TODO: use this - http://benhoyt.com/writings/scandir/
             for file in os.listdir(path):
-                t['children'].append(get_treemap_dict(path + os.path.sep + file))
+                t['children'].append(
+                    get_treemap_dict(path + os.path.sep + file))
                 bytes += t['children'][-1]['bytes']
         except OSError as exc:
             print('ignoring OSError at %s' % path)
