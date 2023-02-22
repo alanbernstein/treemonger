@@ -171,28 +171,30 @@ class TreemongerApp(object):
         self.render(ev.width, ev.height)
 
     def on_keydown(self, ev):
-        print('keydown: %s' % ev.char)
+        key = ev.keysym
+        print('keydown: "%s"' % key)
 
     def on_keyup(self, ev):
-        print('keyup: %s' % ev.char)
-        if ev.char == 'q':
+        key = ev.keysym
+        print('keyup: "%s"' % key)
+        if key == 'q':
             sys.exit(0)
-        if ev.char == 'r':
+        if key == 'r':
             print('not yet implemented: refresh')
             # requires combining everything into one big App class..., so the tree can get rescanned
-        if ev.char == 'm':
+        if key == 'm':
             print('not yet implemented: mode cycle')
             # 0. total size
             # 1. total descendants
-        if ev.char == 'u':
+        if key == 'u':
             print('not yet implemented: go up in the directory tree')
-        if ev.keysym == 'Up':
+        if key == 'Up':
             print('not yet implemented: navigate up in map')
-        if ev.keysym == 'Down':
+        if key == 'Down':
             print('not yet implemented: navigate down in map')
-        if ev.keysym == 'Right':
+        if key == 'Right':
             print('not yet implemented: navigate right in map')
-        if ev.keysym == 'Left':
+        if key == 'Left':
             print('not yet implemented: navigate left in map')
 
 
