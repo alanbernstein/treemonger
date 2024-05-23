@@ -6,6 +6,9 @@ options:  optional
 - --exclude-dir=dirname  OR  -d=dirname  # exclude directory by name
 - --exclude-file=filename                # exclude file by name
 - --exclude-filter=filter                # exclude file by substring match
+- --file=pth                             # load previous scan from file
+- --file                                 # automatically load most recent scan from PWD
+
 
 """
 import sys
@@ -20,6 +23,8 @@ from scan import get_directory_tree, print_directory_tree, tree_to_dict, dict_to
 from subdivide import compute_rectangles
 # from renderers.tk import render as render_tk
 from renderers.tk import render_class
+
+from ipdb import iex
 
 # MAJOR TODOs:
 # - text rendering (renderers.tk.TreemongerApp.render_rect()):
@@ -36,12 +41,32 @@ from renderers.tk import render_class
 
 archive_base_path = os.getenv('HOME') + '/treemonger'
 
+config_file_path = os.path.expanduser('~/.config/treemonger.json')
 
+NOW = dt.strftime(dt.now(), '%Y%m%d-%H%M%S')
+HOST = os.getenv('MACHINE', socket.gethostname())
+
+@iex
 def main(args):
-    root, options = parse_args(args)
+    # TODO: refactor into class so archive_path etc can be shared
+    options = {
+        'exclude-dirs': [],
+        'exclude-files': [],
+        'exclude-filters': [],
+        'save-to-archive': True,
+        'skip-mount': False,
+    }
+
+    config_options = parse_config()
+    root, arg_options = parse_args(args)
+
+    for k, v in options.items():
+        if type(v) is list:
+            v.extend(config_options.get(k, []))
+            v.extend(arg_options.get(k, []))
+
     print(options)
 
-    save_to_archive = True
     if 'file' in options:
         with open(options['file'], 'r') as f:
             data = json.load(f)
@@ -56,6 +81,7 @@ def main(args):
             exclude_dirs=options['exclude-dirs'],
             exclude_files=options['exclude-files'],
             exclude_filters=options['exclude-filters'],
+            skip_mount=options['skip-mount'],
         )
         t1 = dt.now()
 
@@ -63,23 +89,25 @@ def main(args):
         print('%f sec to scan %s / %s files' %
               (delta_t, format_bytes(t.size), get_total_children(t)))
 
-    if save_to_archive:
-        now = dt.strftime(dt.now(), '%Y%m%d-%H%M%S')
+    if options['save-to-archive']:
         data = {
             'tree': tree_to_dict(t),
             'root': os.path.realpath(root),
-            'host': os.getenv('MACHINE', socket.gethostname()),
+            'host': HOST,
             'options': options,
-            'scan_timestamp': now,
+            'scan_timestamp': NOW,
             'scan_duration_seconds': delta_t,
         }
 
         if data['root'] == '/':
             # prevent clobber
             data['root'] = 'root'
-        archive_basename = data['root'][1:].replace('/', '-') + '-' + now
-        archive_path = archive_base_path + '/' + data['host']
+        archive_basename = data['root'][1:].replace('/', '-') + '-' + NOW
+        archive_path = archive_base_path + '/' + HOST
         archive_filename = archive_path + '/' + archive_basename
+
+        # archive_filename = get_archive_filename(data['root'])  # TODO
+
         print('archiving results to:\n  %s' % archive_filename)
         try:
             if not os.path.exists(archive_path):
@@ -101,11 +129,21 @@ def main(args):
     render_class(t, compute_rectangles, title=title)
 
 
+def get_archive_filename(root):
+    # TODO move filename logic to here 
+    return ''
+
 def get_total_children(t):
     if t.children:
         return sum([get_total_children(c) for c in t.children])
     else:
         return 1
+
+
+def parse_config():
+    with open(config_file_path) as f:
+        config = json.load(f)
+    return config
 
 
 def parse_args(args):
@@ -116,24 +154,45 @@ def parse_args(args):
         'exclude-files': [],
         'exclude-filters': [],
     }
+
     if len(args) == 1:
-        print('using pwd')
-    else:
-        for arg in args[1:]:
-            if arg.startswith('-'):
-                flags.append(arg)
-                if arg.startswith('--exclude-dir=') or arg.startswith('-d='):
-                    options['exclude-dirs'].append(arg.split('=')[1])
-                if arg.startswith('--exclude-file='):
-                    options['exclude-files'].append(arg.split('=')[1])
-                if arg.startswith('--exclude-filter='):
-                    options['exclude-filters'].append(arg.split('=')[1])
-                if arg.startswith('--file') or arg.startswith('-f='):
+        print('using pwd (%s)' % os.path.realpath(root))
+        return root, options
+
+    for arg in args[1:]:
+        if arg.startswith('-'):
+            flags.append(arg)
+            if arg.startswith('--exclude-dir=') or arg.startswith('-d='):
+                options['exclude-dirs'].append(arg.split('=')[1])
+            if arg.startswith('--exclude-file='):
+                options['exclude-files'].append(arg.split('=')[1])
+            if arg.startswith('--exclude-filter='):
+                options['exclude-filters'].append(arg.split('=')[1])
+            if arg.startswith('--file') or arg.startswith('-f'):
+                if '=' in arg:
                     options['file'] = os.path.expanduser(arg.split('=')[1])
-            else:
-                root = arg
+                else:
+                    fname, age = get_latest_file_for_pwd()
+                    print('using latest file (age = %s): %s' % (age, fname))
+                    options['file'] = fname
+            if arg.startswith('--skip-mount') or arg == '-x':
+                options['skip-mount'] = True
+
+        else:
+            root = arg
 
     return root, options
+
+
+def get_latest_file_for_pwd():
+    archive_basename = get_archive_basename()  # TODO use this
+    glb = glob.glob(archive_basename)
+    if glb:
+        files_ages = [(x, os.stat(x).st_mtime) for x in glb]
+        files_ages.sort(files_ages, key=lambda x: -x[1])
+        return files_ages[0]
+
+    return '', 0
 
 
 if __name__ == '__main__':

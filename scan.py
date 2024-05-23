@@ -74,7 +74,12 @@ def dict_to_tree(d):
     return t
 
 
-def get_directory_tree(path, exclude_dirs=[], exclude_files=[], exclude_filters=[], slow_details=False):
+def get_directory_tree(path,
+                       exclude_dirs=[],
+                       exclude_files=[],
+                       exclude_filters=[],
+                       skip_mount=False,
+                       slow_details=False):
     realpath = os.path.realpath(path)
     base = os.path.basename(path)
     t = TreeNode(path)
@@ -91,7 +96,7 @@ def get_directory_tree(path, exclude_dirs=[], exclude_files=[], exclude_filters=
         t.details['skip'] = 'volume'
         return t
 
-    if not (realpath == '/') and os.path.ismount(realpath):
+    if skip_mount and not (realpath == '/') and os.path.ismount(realpath):
         # different filesystem, probably don't want to scan
         print('skip mount %s' % path)
         t.details['skip'] = 'mount'
