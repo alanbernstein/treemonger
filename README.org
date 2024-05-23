@@ -6,3 +6,9 @@ there are some outstanding user interface features, and the rendering/clipping n
 
 example:
 [[./example.png]]
+* UI
+
+- mouse1 (left click) to print file info to terminal
+- mouse2 (middle click in ubuntu) to copy path to clipboard
+- mouse3 (right click in ubuntu) to open file
+- 'q' to quit

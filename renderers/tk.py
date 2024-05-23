@@ -1,5 +1,10 @@
-import tkinter as tk
+import os
+import platform
+import subprocess
 import sys
+
+import pyperclip
+import tkinter as tk
 
 from utils import shorten
 from .colormap import colormap
@@ -106,6 +111,8 @@ class TreemongerApp(object):
         self.master.bind("<KeyPress>", self.on_keydown)
         self.master.bind("<KeyRelease>", self.on_keyup)
         self.canv.bind("<Button-1>", self.on_click1)
+        self.canv.bind("<Button-2>", self.on_click2)
+        self.canv.bind("<Button-3>", self.on_click3)
         self.frame.pack()
 
     def render(self, width=None, height=None):
@@ -165,6 +172,20 @@ class TreemongerApp(object):
         rect = self.find_rect(ev.x, ev.y)
         print('%s (%s)' %(rect['path'], rect['bytes']))
 
+    def on_click2(self, ev):
+        print('2 clicked: (%d, %d), (%d, %d)' %
+              (ev.x, ev.y, ev.x_root, ev.y_root))
+        rect = self.find_rect(ev.x, ev.y)
+        pyperclip.copy(rect['path'])
+        print('copied to clipboard: "%s"' % (rect['path']))
+
+    def on_click3(self, ev):
+        print('3 clicked: (%d, %d), (%d, %d)' %
+              (ev.x, ev.y, ev.x_root, ev.y_root))
+        rect = self.find_rect(ev.x, ev.y)
+        print('opening: "%s"' % (rect['path']))
+        open_file(rect['path'])
+
     def on_resize(self, ev):
         print('resized: %d %d' % (ev.width, ev.height))
         # self.canv.coords(self.root_rect, 1, 1, ev.width - 2, ev.height - 2)
@@ -207,6 +228,15 @@ def render_class(tree, compute_func, title, width=None, height=None):
     app = TreemongerApp(root, title, tree, compute_func, width, height)
     app.render()
     root.mainloop()
+
+
+def open_file(path):
+    if platform.system() == "Windows":
+        os.startfile(path)
+    elif platform.system() == "Darwin":
+        subprocess.Popen(["open", path])
+    else:
+        subprocess.Popen(["xdg-open", path])
 
 
 def render_class_old(rects, width, height, title):
