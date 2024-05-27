@@ -124,8 +124,6 @@ def main(args):
     # render_tk(rects, width, height, title=os.path.realpath(root))
     # render_class(rects, width, height, title=os.path.realpath(root))
 
-    # import ipdb; ipdb.set_trace
-
     title = os.path.realpath(root)
     print('calling render_class')
     render_class(t, compute_rectangles, title=title)
