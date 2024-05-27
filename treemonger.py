@@ -38,8 +38,6 @@ from renderers.tk import render_class
 # - html page loads json file from local server
 #   - this is new to me, but very similar to mike bostock d3.js examples
 
-archive_base_path = os.getenv('HOME') + '/treemonger'
-
 config_file_path = os.path.expanduser('~/.config/treemonger.json')
 if not os.path.exists(config_file_path):
     script_path = str(pathlib.Path(__file__).parent.resolve())
@@ -50,26 +48,29 @@ HOST = os.getenv('MACHINE', socket.gethostname())
 
 def main(args):
     # TODO: refactor into class so archive_path etc can be shared
-    options = {
-        'exclude-dirs': [],
-        'exclude-files': [],
-        'exclude-filters': [],
-        'save-to-archive': True,
-        'skip-mount': False,
-    }
+    # TODO: load config file first, then update with CLI flags
+    config = parse_config()
+    config_file_flags = config['flags']
 
-    config_options = parse_config()
-    root, arg_options = parse_args(args)
+    root, cli_flags = parse_args(args)
+    flags = config_file_flags
 
-    for k, v in options.items():
+    # update list values by combining rather than replacing
+    for k, v in flags.items():
+        if cli_flags.get(k, []) == []:
+            continue
         if type(v) is list:
-            v.extend(config_options.get(k, []))
-            v.extend(arg_options.get(k, []))
+            flags[k] = flags[k].extend(cli_flags[k])
+        else:
+            flags[k] = cli_flags[k]
 
-    print(options)
 
-    if 'file' in options:
-        with open(options['file'], 'r') as f:
+    print('flags:')
+    for k, v in flags.items():
+        print('  %s: %s' % (k, v))
+
+    if 'file' in flags:
+        with open(flags['file'], 'r') as f:
             data = json.load(f)
         root = data['root']
         t = dict_to_tree(data['tree'])
@@ -79,10 +80,10 @@ def main(args):
         t0 = dt.now()
         t = get_directory_tree(
             root,
-            exclude_dirs=options['exclude-dirs'],
-            exclude_files=options['exclude-files'],
-            exclude_filters=options['exclude-filters'],
-            skip_mount=options['skip-mount'],
+            exclude_dirs=flags['exclude-dirs'],
+            exclude_files=flags['exclude-files'],
+            exclude_filters=flags['exclude-filters'],
+            skip_mount=flags['skip-mount'],
         )
         t1 = dt.now()
 
@@ -90,12 +91,12 @@ def main(args):
         print('%f sec to scan %s / %s files' %
               (delta_t, format_bytes(t.size), get_total_children(t)))
 
-    if options['save-to-archive']:
+    if flags['save-to-archive']:
         data = {
             'tree': tree_to_dict(t),
             'root': os.path.realpath(root),
             'host': HOST,
-            'options': options,
+            'options': flags,
             'scan_timestamp': NOW,
             'scan_duration_seconds': delta_t,
         }
@@ -104,7 +105,7 @@ def main(args):
             # prevent clobber
             data['root'] = 'root'
         archive_basename = data['root'][1:].replace('/', '-') + '-' + NOW
-        archive_path = archive_base_path + '/' + HOST
+        archive_path = os.path.expanduser(flags['archive-base-path']) + '/' + HOST
         archive_filename = archive_path + '/' + archive_basename
 
         # archive_filename = get_archive_filename(data['root'])  # TODO
@@ -130,7 +131,7 @@ def main(args):
 
 
 def get_archive_filename(root):
-    # TODO move filename logic to here 
+    # TODO move filename logic to here, use pattern from config file
     return ''
 
 def get_total_children(t):
@@ -149,7 +150,7 @@ def parse_config():
 def parse_args(args):
     root = '.'
     flags = []
-    options = {
+    cli_flags = {
         'exclude-dirs': [],
         'exclude-files': [],
         'exclude-filters': [],
@@ -157,31 +158,31 @@ def parse_args(args):
 
     if len(args) == 1:
         print('using pwd (%s)' % os.path.realpath(root))
-        return root, options
+        return root, cli_flags
 
     for arg in args[1:]:
         if arg.startswith('-'):
             flags.append(arg)
             if arg.startswith('--exclude-dir=') or arg.startswith('-d='):
-                options['exclude-dirs'].append(arg.split('=')[1])
+                cli_flags['exclude-dirs'].append(arg.split('=')[1])
             if arg.startswith('--exclude-file='):
-                options['exclude-files'].append(arg.split('=')[1])
+                cli_flags['exclude-files'].append(arg.split('=')[1])
             if arg.startswith('--exclude-filter='):
-                options['exclude-filters'].append(arg.split('=')[1])
+                cli_flags['exclude-filters'].append(arg.split('=')[1])
             if arg.startswith('--file') or arg.startswith('-f'):
                 if '=' in arg:
-                    options['file'] = os.path.expanduser(arg.split('=')[1])
+                    cli_flags['file'] = os.path.expanduser(arg.split('=')[1])
                 else:
                     fname, age = get_latest_file_for_pwd()
                     print('using latest file (age = %s): %s' % (age, fname))
-                    options['file'] = fname
+                    cli_flags['file'] = fname
             if arg.startswith('--skip-mount') or arg == '-x':
-                options['skip-mount'] = True
+                cli_flags['skip-mount'] = True
 
         else:
             root = arg
 
-    return root, options
+    return root, cli_flags
 
 
 def get_latest_file_for_pwd():

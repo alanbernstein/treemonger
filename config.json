@@ -1,1 +1,42 @@
-{"exclude-dirs": [".git"]}
+{
+    "flags": {
+        "exclude-dirs": [".git"],
+        "exclude-files": [],
+        "exclude-filters": [],
+        "save-to-archive": true,
+        "archive-base-path": "~/treemonger",
+        "archive-name-pattern": "%host/%root-%timestamp",
+        "skip-mount": false
+    },
+    "color_cycle": ["#ff7f7f", "#ffbf7f", "#ffff00", "#7fff7f", "#7fffff", "#bfbfff", "#bfbfbf", "#ff7fff"],
+    "mouse": {
+        "1": "info",
+        "2": "copy_path",
+        "3": "delete_file",
+        "4": "zoom_out",
+        "5": "zoom_in"
+    },
+    "keyboard": {
+        "q": "quit",
+        "r ": "refresh",
+        "m": "cycle_mode",
+        "Up": "zoom_out",
+        "Down": "zoom_in",
+        "t": "zoom_top",
+        "d": "delete_file",
+        "c": "copy_path",
+        "o": "open_location",
+        "f": "find",
+        "i": "info"
+    },
+    "tk_renderer": {
+        "text_offset_x": 3,
+        "text_offset_y": 3,
+        "dir_text_offset": 6,
+        "text_size": 8,
+        "xpad": 0,
+        "ypad": 0,
+        "min_box_size": 10,
+        "max_filesystem_depth": 16        
+    }
+}

@@ -1,5 +1,6 @@
 colormap = [
     # main       light      dark
+    # TODO: generate light/dark variants automatically
     ["#ff7f7f", "#ffbfbf", "#bf7f7f"],
     ["#ffbf7f", "#ffdfbf", "#bf9f5f"],
     ["#ffff00", "#ffffbf", "#bfbf3f"],

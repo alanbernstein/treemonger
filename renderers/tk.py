@@ -79,10 +79,11 @@ class TreemongerApp(object):
         self._print_usage()
 
     def _print_usage(self):
+        print('UI usage:')
         for mouse_button, action_func in sorted(self.action_map_mouse.items()):
-            print('mouse<%d>: %s' % (mouse_button, action_func.__name__))
+            print('  mouse<%d>: %s' % (mouse_button, action_func.__name__))
         for key, action_func in sorted(self.action_map_keyboard.items()):
-            print('"%s": %s' % (key, action_func.__name__))
+            print('  "%s": %s' % (key, action_func.__name__))
 
     def _render(self, width=None, height=None):
         width = width or self.width
