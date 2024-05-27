@@ -3,7 +3,12 @@ import platform
 import subprocess
 import sys
 
-import pyperclip
+try:
+    import pyperclip
+    pyperclip_present = True
+except:
+    pyperclip_present = False
+
 import tkinter as tk
 
 from utils import shorten
@@ -83,6 +88,27 @@ class TreemongerAppOld(object):
 # then the mouse click hit test can retrieve the full struct directly
 
 class TreemongerApp(object):
+    # TODO: connect this
+    action_map_keyboarde = {
+        'q': 'quit',
+        'r': 'refresh',
+        'Up': 'zoomout',
+        'Down': 'zoomin',
+        't': 'top',
+        'd': 'delete',
+        'c': 'copy',
+        'o': 'open',
+        'f': 'find',
+        'i': 'info'
+    }
+    # TODO connect this
+    action_map_mouse = {
+        1: ['info'],
+        2: ['copy'],
+        3: ['delete'],
+        4: ['zoomout'],
+        5: ['zoomin'],
+    }
     def __init__(self, master, title, tree, compute_func, width=None, height=None):
 
         width = width or master.winfo_screenwidth()/2
@@ -90,6 +116,7 @@ class TreemongerApp(object):
 
         self.master = master
         self.tree = tree
+        self.render_root = '/'  # walk up and down tree to zoom
         self.compute_func = compute_func
         self.width = width
         self.height = height
@@ -110,16 +137,23 @@ class TreemongerApp(object):
         self.canv.bind("<Configure>", self.on_resize)
         self.master.bind("<KeyPress>", self.on_keydown)
         self.master.bind("<KeyRelease>", self.on_keyup)
-        self.canv.bind("<Button-1>", self.on_click1)
-        self.canv.bind("<Button-2>", self.on_click2)
-        self.canv.bind("<Button-3>", self.on_click3)
+        self.canv.bind("<Button>", self.on_click)
+        self.canv.bind_all("<MouseWheel>", self.on_mousewheel)
         self.frame.pack()
 
     def render(self, width=None, height=None):
         width = width or self.width
         height = height or self.height
-        print('rendering %dx%d' % (width, height))
-        self.rects = self.compute_func(self.tree, [0, width], [0, height])
+        print('rendering %s %dx%d' % (self.render_root, width, height))
+
+        # descend tree according to zoomstate variable render_root
+        render_tree = self.tree
+        if self.render_root != '/':
+            parts = self.render_root.split('/')[1:]
+            for p in parts:
+                render_tree = render_tree[p]
+
+        self.rects = self.compute_func(render_tree, [0, width], [0, height])
         for rect in self.rects:
             self.render_rect(rect)
 
@@ -166,30 +200,34 @@ class TreemongerApp(object):
             if rect['x'] <= x <= rect['x'] + rect['dx'] and rect['y'] <= y <= rect['y'] + rect['dy']:
                 return rect
 
-    def on_click1(self, ev):
-        print('left clicked: (%d, %d), (%d, %d)' %
-              (ev.x, ev.y, ev.x_root, ev.y_root))
+    def on_click(self, ev):
+        print('click<%d>: (%d, %d), (%d, %d)' %
+              (ev.num, ev.x, ev.y, ev.x_root, ev.y_root))
         rect = self.find_rect(ev.x, ev.y)
-        print('%s (%s)' %(rect['path'], rect['bytes']))
 
-    def on_click2(self, ev):
-        print('2 clicked: (%d, %d), (%d, %d)' %
-              (ev.x, ev.y, ev.x_root, ev.y_root))
-        rect = self.find_rect(ev.x, ev.y)
-        pyperclip.copy(rect['path'])
-        print('copied to clipboard: "%s"' % (rect['path']))
+        # action_func = self.action_map_mouse.get(ev.num, [])
 
-    def on_click3(self, ev):
-        print('3 clicked: (%d, %d), (%d, %d)' %
-              (ev.x, ev.y, ev.x_root, ev.y_root))
+        if ev.num == 1:
+            print('%s (%s)' %(rect['path'], rect['bytes']))
+        if ev.num == 2:
+            self.copypath(ev)
+        if ev.num == 3:
+            self.openfile(ev)
+        if ev.num == 4:
+            print('zoom out on: "%s"' % (rect['path']))
+        if ev.num == 5:
+            print('zoom in on: "%s"' % (rect['path']))
+    
+    def on_mousewheel(self, ev):
+        print('mousewheel: %s' % ev)
         rect = self.find_rect(ev.x, ev.y)
-        print('opening: "%s"' % (rect['path']))
-        open_file(rect['path'])
+        print('zooming on: "%s"' % (rect['path']))
 
     def on_resize(self, ev):
         print('resized: %d %d' % (ev.width, ev.height))
+        self.width, self.height = ev.width, ev.height
         # self.canv.coords(self.root_rect, 1, 1, ev.width - 2, ev.height - 2)
-        self.render(ev.width, ev.height)
+        self.render()
 
     def on_keydown(self, ev):
         key = ev.keysym
@@ -199,24 +237,85 @@ class TreemongerApp(object):
         key = ev.keysym
         print('keyup: "%s"' % key)
         if key == 'q':
-            sys.exit(0)
+            self.quit()
         if key == 'r':
-            print('not yet implemented: refresh')
-            # requires combining everything into one big App class..., so the tree can get rescanned
+            self.refresh()
         if key == 'm':
-            print('not yet implemented: mode cycle')
-            # 0. total size
-            # 1. total descendants
-        if key == 'u':
-            print('not yet implemented: go up in the directory tree')
+            self.cycle_mode()
+        if key == 'd':
+            self.delete(ev)
+        if key == 't':
+            self.zoom_top()
+        if key == 'c':
+            print('copy')
+            self.copypath(ev)
+        if key == 'o':
+            print('open')
+            self.openfile(ev)
         if key == 'Up':
-            print('not yet implemented: navigate up in map')
+            self.zoom_out()
         if key == 'Down':
-            print('not yet implemented: navigate down in map')
+            self.zoom_in(ev)
         if key == 'Right':
             print('not yet implemented: navigate right in map')
         if key == 'Left':
             print('not yet implemented: navigate left in map')
+
+    def quit(self):
+        sys.exit(0)
+
+    def refresh(self):
+        print('not yet implemented: refresh')
+        # TODO this requires passing a signal to scanner, and receiving the result
+        # perhaps properly requires a refactor
+        self.render()
+
+    def zoom_top(self):
+        self.render_root = '/'
+        self.refresh()
+
+    def zoom_out(self):
+        parts = self.render_root.split('/')
+        # TODO don't back up further than possible
+        self.render_root = '/'.join(parts[:-1])
+        self.refresh()
+
+    def zoom_in(self, ev):
+        p1 = self.render_root
+        parts1 = p1.split('/')
+        rect = self.find_rect(ev.x, ev.y)
+        p2 = rect['path']
+        parts2 = p2.split('/')
+        if len(parts2) > len(parts1):
+            parts2 = parts2[:len(parts1)+1]  # zoom in one level
+        self.render_root = '/'.join(parts2)
+        self.refresh()
+
+    def cycle_mode(self):
+        print('not yet implemented: mode cycle')
+        # 0. total size
+        # 1. total descendants
+
+    def copypath(self, ev):
+        rect = self.find_rect(ev.x, ev.y)
+        if pyperclip_present:
+            pyperclip.copy(rect['path'])
+            print('copied to clipboard: "%s"' % (rect['path']))
+        else:
+            print('install pyperclip')
+
+    def openfile(self, ev):
+        rect = self.find_rect(ev.x, ev.y)
+        print('opening: "%s"' % (rect['path']))
+        open_file(rect['path'])
+
+    def delete(self, ev):
+        rect = self.find_rect(ev.x, ev.y)
+        rect['path']
+        # os.rm(rect['path'])
+        # TODO: remove from tree struct too - hacky workaround to the bigger refactor - doesn't work with deleting externally
+        print('deleted "%s"' % (rect['path']))
+        
 
 
 def render_class(tree, compute_func, title, width=None, height=None):

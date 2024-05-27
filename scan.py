@@ -43,7 +43,16 @@ class TreeNode(object):
             info_list.append(details)
 
         info = ', '.join(info_list)
-        return '<%s: %s>' % (self.name, info)
+        return '<TreeNode %s: %s>' % (self.name, info)
+
+    def __getitem__(self, key):
+        # get child by path
+        for c in self.children:
+            if key == c.name or key + '/' == c.name:
+                return c
+        print('failed to getitem: %s' % key)
+        print([c.name for c in self.children])
+        return None
 
     def __repr__(self):
         return self.__str__()

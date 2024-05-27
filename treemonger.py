@@ -16,6 +16,7 @@ import json
 import os
 import socket
 import argparse
+import pathlib
 from datetime import datetime as dt
 
 from utils import format_bytes
@@ -23,8 +24,6 @@ from scan import get_directory_tree, print_directory_tree, tree_to_dict, dict_to
 from subdivide import compute_rectangles
 # from renderers.tk import render as render_tk
 from renderers.tk import render_class
-
-from ipdb import iex
 
 # MAJOR TODOs:
 # - text rendering (renderers.tk.TreemongerApp.render_rect()):
@@ -42,11 +41,13 @@ from ipdb import iex
 archive_base_path = os.getenv('HOME') + '/treemonger'
 
 config_file_path = os.path.expanduser('~/.config/treemonger.json')
+if not os.path.exists(config_file_path):
+    script_path = str(pathlib.Path(__file__).parent.resolve())
+    config_file_path = script_path + '/config.json'
 
 NOW = dt.strftime(dt.now(), '%Y%m%d-%H%M%S')
 HOST = os.getenv('MACHINE', socket.gethostname())
 
-@iex
 def main(args):
     # TODO: refactor into class so archive_path etc can be shared
     options = {
@@ -126,6 +127,7 @@ def main(args):
     # import ipdb; ipdb.set_trace
 
     title = os.path.realpath(root)
+    print('calling render_class')
     render_class(t, compute_rectangles, title=title)
 
 
