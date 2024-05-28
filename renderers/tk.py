@@ -11,20 +11,18 @@ import tkinter as tk
 
 from utils import shorten, open_file
 from .colormap import colormap
-from constants import (text_size,
-                       text_offset_x,
-                       text_offset_y,
-                       )
 
 
 # TODO: maybe the compute_rectangles function should add rect positions to the tree struct directly
 # then the mouse click hit test can retrieve the full struct directly
 
 class TreemongerApp(object):
-    def __init__(self, master, title, tree, compute_func, width=None, height=None):
+    def __init__(self, master, title, tree, compute_func, render_params, width=None, height=None):
 
         width = width or master.winfo_screenwidth()/2
         height = height or master.winfo_screenheight()/2
+        self.render_params = render_params
+        print(self.render_params)
 
         self.master = master
         self.tree = tree
@@ -97,7 +95,7 @@ class TreemongerApp(object):
 
         # TODO: advance color cycle by zoom depth
 
-        self.rects = self.compute_func(render_tree, [0, width], [0, height])
+        self.rects = self.compute_func(render_tree, [0, width], [0, height], self.render_params)
         for rect in self.rects:
             self._render_rect(rect)
 
@@ -126,17 +124,17 @@ class TreemongerApp(object):
         self.canv.create_line(x+1, y+dy-1, x+dx-1, y+dy-1, x+dx-1, y+1, fill=cs[2])
 
         if rect['type'] == 'directory':
-            text_x = x + text_offset_x
-            text_y = y + text_offset_y
+            text_x = x + self.render_params['text_offset_x']
+            text_y = y + self.render_params['text_offset_y']
             anchor = tk.NW
         elif rect['type'] == 'file':
             text_x = x + dx / 2
             text_y = y + dy / 2
             anchor = tk.CENTER
 
-        clipped_text = shorten(rect['text'], dx, text_size)
+        clipped_text = shorten(rect['text'], dx, self.render_params['text_size'])
         self.canv.create_text(text_x, text_y, text=clipped_text, fill="black",
-                              anchor=anchor, font=("Helvectica", text_size))
+                              anchor=anchor, font=("Helvectica", self.render_params['text_size']))
 
     def _find_rect(self, x, y):
         # TODO: it would be really nice if the rectangles and the tree nodes
@@ -249,7 +247,7 @@ class TreemongerApp(object):
         # TODO: remove from tree struct too - hacky workaround to the bigger refactor - doesn't work with deleting externally
         print('  delete: not yet implemented')
 
-def render_class(tree, compute_func, title, width=None, height=None):
+def render_class(tree, compute_func, render_params, title, width=None, height=None):
     """
     similar to render_class, but accepts the original tree rather than the computed rectangles
     this allows recalculation on resize etc
@@ -268,6 +266,6 @@ def render_class(tree, compute_func, title, width=None, height=None):
     # would produce the interactivity i'd like to see in an svg)
 
     root = tk.Tk()
-    app = TreemongerApp(root, title, tree, compute_func, width, height)
+    app = TreemongerApp(root, title, tree, compute_func, render_params, width, height)
     app._render()
     root.mainloop()

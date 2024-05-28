@@ -1,11 +1,4 @@
 from utils import format_bytes
-from constants import (max_filesystem_depth,
-                       min_box_size,
-                       text_size,
-                       dir_text_offset,
-                       xpad,
-                       ypad,
-                       )
 
 """
 using, for example, the squarify module is an appealing idea
@@ -16,7 +9,7 @@ https://github.com/laserson/squarify
 """
 
 
-def compute_rectangles(node, xlim, ylim, recurse_level=0, dir_level=0, rects=[]):
+def compute_rectangles(node, xlim, ylim, params, recurse_level=0, dir_level=0, rects=[]):
     # this function has to handle 3 cases:
     #  - single file: return a single rect
     #  - full directory: return single rect, divide and recurse on child files
@@ -29,9 +22,9 @@ def compute_rectangles(node, xlim, ylim, recurse_level=0, dir_level=0, rects=[])
     # TODO: need to enforce append order of rects such that
     #       drawing in iteration order ensures proper z ordering
 
-    if (dir_level > max_filesystem_depth or
-        xlim[1] - xlim[0] < min_box_size or
-        ylim[1] - ylim[0] < min_box_size or
+    if (dir_level > params['max_filesystem_depth'] or
+        xlim[1] - xlim[0] < params['min_box_size'] or
+        ylim[1] - ylim[0] < params['min_box_size'] or
         type(node) is not list and 'hide' in node.details):
         return
 
@@ -62,7 +55,7 @@ def compute_rectangles(node, xlim, ylim, recurse_level=0, dir_level=0, rects=[])
 
         if node_type == 'directory':
             # directory padding
-            ylim[0] = ylim[0] + text_size + dir_text_offset
+            ylim[0] = ylim[0] + params['text_size'] + params['dir_text_offset']
             ylim[1] = ylim[1] - 3
             xlim[0] = xlim[0] + 3
             xlim[1] = xlim[1] - 3
@@ -80,18 +73,18 @@ def compute_rectangles(node, xlim, ylim, recurse_level=0, dir_level=0, rects=[])
             subdir_level = 0
             total_size = sum([x.size for x in node])
 
-        groupA, xA, yA, groupB, xB, yB = squarify(children, xlim, ylim, total_size=total_size)
+        groupA, xA, yA, groupB, xB, yB = squarify(children, xlim, ylim, params['xpad'], params['ypad'], total_size=total_size)
 
         # recurse
-        compute_rectangles(groupA, xA, yA, recurse_level + 1,
+        compute_rectangles(groupA, xA, yA, params, recurse_level + 1,
                            dir_level + subdir_level)
-        compute_rectangles(groupB, xB, yB, recurse_level + 1,
+        compute_rectangles(groupB, xB, yB, params, recurse_level + 1,
                            dir_level + subdir_level)
 
     return rects
 
 
-def squarify(nodes, xlim, ylim, total_size):
+def squarify(nodes, xlim, ylim, xpad, ypad, total_size):
     """core geometric subdivision algorithm
     given:
     - a list of nodes, each with a 'size' attribute,

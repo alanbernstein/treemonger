@@ -134,7 +134,7 @@ def main(args):
 
     title = os.path.realpath(root)
     print('calling render_class')
-    render_class(t, compute_rectangles, title=title)
+    render_class(t, compute_rectangles, config['tk_renderer'], title=title)
 
 
 def get_archive_location(flags, rootpath, host, timestamp):
