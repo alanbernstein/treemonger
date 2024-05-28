@@ -11,13 +11,15 @@ options:  optional
 
 
 """
-import sys
+import argparse
+import datetime
+from datetime import datetime as dt
+import glob
 import json
 import os
-import socket
-import argparse
 import pathlib
-from datetime import datetime as dt
+import socket
+import sys
 
 from utils import format_bytes
 from scan import get_directory_tree, print_directory_tree, tree_to_dict, dict_to_tree
@@ -53,17 +55,17 @@ def main(args):
     config_file_flags = config['flags']
 
     root, cli_flags = parse_args(args)
+    print(cli_flags)
     flags = config_file_flags
 
     # update list values by combining rather than replacing
-    for k, v in flags.items():
+    for k, v in cli_flags.items():
         if cli_flags.get(k, []) == []:
             continue
         if type(v) is list:
             flags[k] = flags[k].extend(cli_flags[k])
         else:
             flags[k] = cli_flags[k]
-
 
     print('flags:')
     for k, v in flags.items():
@@ -91,24 +93,29 @@ def main(args):
         print('%f sec to scan %s / %s files' %
               (delta_t, format_bytes(t.size), get_total_children(t)))
 
-    if flags['save-to-archive']:
+    realroot = os.path.realpath(root)
+    archive_filename = get_archive_location(flags, realroot, HOST, NOW)
+    archive_path = os.path.dirname(archive_filename)
+
+    print(flags.get('file-latest', False))
+    if flags.get('file-latest', False):
+        fname = get_latest_file_for_pwd(archive_path)
+        ts = os.stat(fname).st_mtime
+        ts_dt = datetime.datetime.fromtimestamp(ts)
+        ts_str = ts_dt.strftime('%Y-%m-%d %H:%M:%S')
+
+        print('using latest recorded file (%s): %s' % (ts_str, fname))
+        flags['file'] = fname
+
+    if not flags.get('file', False) and flags['save-to-archive']:
         data = {
             'tree': tree_to_dict(t),
-            'root': os.path.realpath(root),
+            'root': realroot,
             'host': HOST,
             'options': flags,
             'scan_timestamp': NOW,
             'scan_duration_seconds': delta_t,
         }
-
-        if data['root'] == '/':
-            # prevent clobber
-            data['root'] = 'root'
-        archive_basename = data['root'][1:].replace('/', '-') + '-' + NOW
-        archive_path = os.path.expanduser(flags['archive-base-path']) + '/' + HOST
-        archive_filename = archive_path + '/' + archive_basename
-
-        # archive_filename = get_archive_filename(data['root'])  # TODO
 
         print('archiving results to:\n  %s' % archive_filename)
         try:
@@ -130,9 +137,25 @@ def main(args):
     render_class(t, compute_rectangles, title=title)
 
 
-def get_archive_filename(root):
-    # TODO move filename logic to here, use pattern from config file
-    return ''
+def get_archive_location(flags, rootpath, host, timestamp):
+    if rootpath == '/':
+        # prevent clobber
+        rootpath = 'root'
+    rootpath_slug = rootpath[1:].replace('/', '-')
+    pattern = flags.get('archive-name-pattern', '')
+    if pattern:
+        archive_basename = pattern
+        archive_basename = archive_basename.replace('%host', HOST)
+        archive_basename = archive_basename.replace('%root', rootpath_slug)
+        archive_basename = archive_basename.replace('%timestamp', NOW)
+    else:
+        return ''
+
+    archive_filename = '%s/%s' % (
+        os.path.expanduser(flags['archive-base-path']),
+        archive_basename,
+    )
+    return archive_filename
 
 def get_total_children(t):
     if t.children:
@@ -173,9 +196,8 @@ def parse_args(args):
                 if '=' in arg:
                     cli_flags['file'] = os.path.expanduser(arg.split('=')[1])
                 else:
-                    fname, age = get_latest_file_for_pwd()
-                    print('using latest file (age = %s): %s' % (age, fname))
-                    cli_flags['file'] = fname
+                    cli_flags['file-latest'] = True
+                    print('set file-latest = true')
             if arg.startswith('--skip-mount') or arg == '-x':
                 cli_flags['skip-mount'] = True
 
@@ -185,15 +207,14 @@ def parse_args(args):
     return root, cli_flags
 
 
-def get_latest_file_for_pwd():
-    archive_basename = get_archive_basename()  # TODO use this
-    glb = glob.glob(archive_basename)
+def get_latest_file_for_pwd(archive_path):
+    glb = glob.glob(archive_path + '/*')
     if glb:
         files_ages = [(x, os.stat(x).st_mtime) for x in glb]
-        files_ages.sort(files_ages, key=lambda x: -x[1])
-        return files_ages[0]
+        files_ages.sort(key=lambda x: -x[1])
+        return files_ages[0][0]
 
-    return '', 0
+    return ''
 
 
 if __name__ == '__main__':

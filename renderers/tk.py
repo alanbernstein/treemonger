@@ -1,6 +1,4 @@
 import os
-import platform
-import subprocess
 import sys
 
 try:
@@ -11,7 +9,7 @@ except:
 
 import tkinter as tk
 
-from utils import shorten
+from utils import shorten, open_file
 from .colormap import colormap
 from constants import (text_size,
                        text_offset_x,
@@ -273,11 +271,3 @@ def render_class(tree, compute_func, title, width=None, height=None):
     app = TreemongerApp(root, title, tree, compute_func, width, height)
     app._render()
     root.mainloop()
-
-def open_file(path):
-    if platform.system() == "Windows":
-        os.startfile(path)
-    elif platform.system() == "Darwin":
-        subprocess.Popen(["open", path])
-    else:
-        subprocess.Popen(["xdg-open", path])
