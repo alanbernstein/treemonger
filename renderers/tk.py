@@ -12,7 +12,6 @@ import tkinter as tk
 from utils import shorten, open_file
 from .colormap import colormap
 
-
 # TODO: maybe the compute_rectangles function should add rect positions to the tree struct directly
 # then the mouse click hit test can retrieve the full struct directly
 
@@ -27,10 +26,12 @@ class TreemongerApp(object):
         self.master = master
         self.tree = tree
         self.render_root = '/'  # walk up and down tree to zoom
+        self.scan_root = tree.path
         self.compute_func = compute_func
         self.width = width
         self.height = height
         self.frame = tk.Frame(self.master)
+
 
         screen_width = master.winfo_screenwidth()
         screen_height = master.winfo_screenheight()
@@ -70,12 +71,17 @@ class TreemongerApp(object):
 
         # descend tree according to zoomstate variable render_root
         render_tree = self.tree
-        if self.render_root != '/':
-            parts = self.render_root.split('/')[1:]
+        render_root = self.render_root.lstrip(self.scan_root)
+        if not render_root.startswith('/'):
+            # annoying kludge to make _render and zoom_in work together, in both "cwd" and path argument cases
+            render_root = '/' + render_root
+        if render_root != '/':
+            parts = render_root.split('/')[1:]
             for p in parts:
+                print('getting %s' % p)
                 render_tree = render_tree[p]
 
-        zoom_depth = len(self.render_root.split('/')) - 1
+        zoom_depth = len(render_root.split('/')) - 1
 
         self.rects = self.compute_func(render_tree, [0, width], [0, height], self.render_params)
         for rect in self.rects:
@@ -140,13 +146,13 @@ class TreemongerApp(object):
         mouse_button = ev.num
         print('mouse<%d>' % mouse_button)
         self.info(ev)
-        action_func_name = self.action_map_mouse.get(mouse_button, '')
+        action_func_name = self.action_map_mouse.get(str(mouse_button), '')
         if action_func_name == '':
             print('  event mouse<%d>: no action defined' % mouse_button)
             return
         action_func = getattr(self, action_func_name)
         action_func(ev)
-    
+
     def _on_keydown(self, ev):
         key = ev.keysym
         print('keydown: "%s"' % key)
@@ -191,12 +197,12 @@ class TreemongerApp(object):
         p1 = self.render_root
         parts1 = p1.split('/')
         rect = self._find_rect(ev.x, ev.y)
-        p2 = rect['path']
+        p2 = rect['path'].lstrip(self.scan_root)
         parts2 = p2.split('/')
         if len(parts2) > len(parts1):
             parts2 = parts2[:len(parts1)+1]  # zoom in one level
         self.render_root = '/'.join(parts2)
-        
+
         # then render
         self.refresh(ev)
 

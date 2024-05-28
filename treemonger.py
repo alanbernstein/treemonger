@@ -24,7 +24,6 @@ import sys
 from utils import format_bytes
 from scan import get_directory_tree, print_directory_tree, tree_to_dict, dict_to_tree
 from subdivide import compute_rectangles
-# from renderers.tk import render as render_tk
 from renderers.tk import render_class
 
 # MAJOR TODOs:
@@ -44,6 +43,7 @@ config_file_path = os.path.expanduser('~/.config/treemonger.json')
 if not os.path.exists(config_file_path):
     script_path = str(pathlib.Path(__file__).parent.resolve())
     config_file_path = script_path + '/config.json'
+print('using config file: %s' % config_file_path)
 
 NOW = dt.strftime(dt.now(), '%Y%m%d-%H%M%S')
 HOST = os.getenv('MACHINE', socket.gethostname())
@@ -202,7 +202,7 @@ def parse_args(args):
                 cli_flags['skip-mount'] = True
 
         else:
-            root = arg
+            root = arg.rstrip('/')
 
     return root, cli_flags
 

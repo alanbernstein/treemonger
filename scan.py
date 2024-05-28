@@ -50,8 +50,8 @@ class TreeNode(object):
         for c in self.children:
             if key == c.name or key + '/' == c.name:
                 return c
-        print('failed to getitem: %s' % key)
-        print([c.name for c in self.children])
+        print('failed to getitem: %s (%s)' % (key, self))
+        #print([c.name for c in self.children])
         return None
 
     def __repr__(self):
