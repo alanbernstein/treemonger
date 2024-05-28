@@ -75,11 +75,11 @@ class TreemongerApp(object):
             for p in parts:
                 render_tree = render_tree[p]
 
-        # TODO: advance color cycle by zoom depth
+        zoom_depth = len(self.render_root.split('/')) - 1
 
         self.rects = self.compute_func(render_tree, [0, width], [0, height], self.render_params)
         for rect in self.rects:
-            self._render_rect(rect)
+            self._render_rect(rect, base_color_depth=zoom_depth)
 
     def render_label(self, rect):
         # TODO: variable font size here?
@@ -92,13 +92,13 @@ class TreemongerApp(object):
         d = d % len(colormap)
         cs = colormap[d]
 
-    def _render_rect(self, rect):
+    def _render_rect(self, rect, base_color_depth=0):
         x = rect['x']
         y = rect['y']
         dx = rect['dx']
         dy = rect['dy']
         d = rect['depth']
-        d = d % len(colormap)
+        d = (d + base_color_depth) % len(colormap)
         cs = colormap[d]
 
         self.canv.create_rectangle(x, y, x+dx, y+dy, width=1, fill=cs[0], outline='black')
