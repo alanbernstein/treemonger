@@ -26,7 +26,6 @@
         "d": "delete_file",
         "c": "copy_path",
         "o": "open_location",
-        "f": "find",
         "i": "info"
     },
     "tk_renderer": {

@@ -17,11 +17,11 @@ from .colormap import colormap
 # then the mouse click hit test can retrieve the full struct directly
 
 class TreemongerApp(object):
-    def __init__(self, master, title, tree, compute_func, render_params, width=None, height=None):
+    def __init__(self, master, title, tree, compute_func, config, width=None, height=None):
 
         width = width or master.winfo_screenwidth()/2
         height = height or master.winfo_screenheight()/2
-        self.render_params = render_params
+        self.render_params = config['tk_renderer']
         print(self.render_params)
 
         self.master = master
@@ -51,35 +51,17 @@ class TreemongerApp(object):
         self.canv.bind_all("<MouseWheel>", self._on_mousewheel)
         self.frame.pack()
 
-        self.action_map_mouse = {
-            1: self.info,
-            2: self.copy_path,
-            3: self.delete_file,
-            4: self.zoom_out,
-            5: self.zoom_in,
-        }
-        self.action_map_keyboard = {
-            'q': self.quit,
-            'r': self.refresh,
-            'm': self.cycle_mode,
-            'Up': self.zoom_out,  # arrow key
-            'Down': self.zoom_in,
-            't': self.zoom_top,
-            'd': self.delete_file,
-            'c': self.copy_path,
-            'o': self.open_location,
-            # 'f': self.find,
-            'i': self.info,
-        }
+        self.action_map_mouse = config['mouse']
+        self.action_map_keyboard = config['keyboard']
 
         self._print_usage()
 
     def _print_usage(self):
         print('UI usage:')
-        for mouse_button, action_func in sorted(self.action_map_mouse.items()):
-            print('  mouse<%d>: %s' % (mouse_button, action_func.__name__))
-        for key, action_func in sorted(self.action_map_keyboard.items()):
-            print('  "%s": %s' % (key, action_func.__name__))
+        for mouse_button, action_func_name in sorted(self.action_map_mouse.items()):
+            print('  mouse<%s>: %s' % (mouse_button, action_func_name))
+        for key, action_func_name in sorted(self.action_map_keyboard.items()):
+            print('  "%s": %s' % (key, action_func_name))
 
     def _render(self, width=None, height=None):
         width = width or self.width
@@ -158,10 +140,11 @@ class TreemongerApp(object):
         mouse_button = ev.num
         print('mouse<%d>' % mouse_button)
         self.info(ev)
-        action_func = self.action_map_mouse.get(mouse_button, '')
-        if action_func == '':
+        action_func_name = self.action_map_mouse.get(mouse_button, '')
+        if action_func_name == '':
             print('  event mouse<%d>: no action defined' % mouse_button)
             return
+        action_func = getattr(self, action_func_name)
         action_func(ev)
     
     def _on_keydown(self, ev):
@@ -171,10 +154,11 @@ class TreemongerApp(object):
     def _on_keyup(self, ev):
         key = ev.keysym
         print('keyup: "%s"' % key)
-        action_func = self.action_map_keyboard.get(key, '')
-        if action_func == '':
+        action_func_name = self.action_map_keyboard.get(key, '')
+        if action_func_name == '':
             print('  event "%s": no action defined' % key)
             return
+        action_func = getattr(self, action_func_name)
         action_func(ev)
 
     def quit(self, ev):
