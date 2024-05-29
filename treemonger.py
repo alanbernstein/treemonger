@@ -50,7 +50,6 @@ HOST = os.getenv('MACHINE', socket.gethostname())
 
 def main(args):
     # TODO: refactor into class so archive_path etc can be shared
-    # TODO: load config file first, then update with CLI flags
     config = parse_config()
     config_file_flags = config['flags']
 
