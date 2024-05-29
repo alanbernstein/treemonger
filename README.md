@@ -1,11 +1,11 @@
-* what
+# what
 
 treemonger is a disk space usage visualizer, inspired by [spacemonger](http://edgerunner.com/spacemonger)
 
 I like spacemonger because of a few details of its treemap rendering method, all of which contribute to considerably better "readability" than every other related tool I have tried.
 
 - it uses the [squarify](https://www.win.tue.nl/~vanwijk/stm.pdf) subdivision rules (or similar),
-- it shows the directory heirarchy with thin but nonzero margins,
+- it shows the directory hierarchy with thin but nonzero margins,
 - it does *not* use "cushion" or "profile" gradients, but rather color for depth, and filename labels for maximum *glanceable* information,
 - it displays directory labels, at the cost of a bit of accuracy in relative sizing.
 
@@ -17,7 +17,8 @@ In lieu of a fully-featured GUI, the app window is just a canvas. UI actions are
 
 example:
 [[./example.png]]
-* install
+
+# install
 
 ```
 pip install -r requirements.txt
@@ -31,7 +32,7 @@ can be used if available:
 - magic (additional file details)
 
 
-* run
+# run
 
 ```
 ./treemonger.py                                 # run in current directory
@@ -46,7 +47,7 @@ can be used if available:
 
 Default values for certain flags can be defined via the configuration file.
 
-* config
+# config
 
 treemonger looks for a local configuration file at `~/.config/treemonger.json`.
 If that file is not found, it uses the default `config.json` file included in the repository.
@@ -61,7 +62,7 @@ Config sections include:
 - tk_renderer: low-level rendering parameters; adjust these at your own risk
 - colormap (not yet implemented)
 
-* UI
+# UI
 
 UI actions are customizable, with default configuration:
 
@@ -85,7 +86,7 @@ Actions are simple member functions in renderers/tk.py:TreemongerApp.
 
 (Mouse button mapping in tk is platform-dependent. Rather than try to interpret what they mean in a coherent way, I chose to make the interface fully customizable: update the config file to whatever works for you.)
 
-* future work
+# future work
 
 - refactor things to enable delete/refresh to work properly
 - fix glitchy rendering/clipping (probably requires a new rendering engine)
