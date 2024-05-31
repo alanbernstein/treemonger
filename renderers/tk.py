@@ -16,17 +16,17 @@ from .colormap import colormap
 # then the mouse click hit test can retrieve the full struct directly
 
 class TreemongerApp(object):
-    def __init__(self, master, title, tree, compute_func, config, width=None, height=None):
+    def __init__(self, master, title, scan_func, compute_func, config, width=None, height=None):
 
         width = width or master.winfo_screenwidth()/2
         height = height or master.winfo_screenheight()/2
-        self.render_params = config['tk_renderer']
-        print(self.render_params)
+        self.config = config
+        print(self.config)
 
         self.master = master
-        self.tree = tree
+        self.tree = scan_func()
         self.render_root = '/'  # walk up and down tree to zoom
-        self.scan_root = tree.path
+        self.scan_root = self.tree.path
         self.compute_func = compute_func
         self.width = width
         self.height = height
@@ -83,7 +83,7 @@ class TreemongerApp(object):
 
         zoom_depth = len(render_root.split('/')) - 1
 
-        self.rects = self.compute_func(render_tree, [0, width], [0, height], self.render_params)
+        self.rects = self.compute_func(render_tree, [0, width], [0, height], self.config['tk_renderer'])
         for rect in self.rects:
             self._render_rect(rect, base_color_depth=zoom_depth)
 
@@ -112,17 +112,17 @@ class TreemongerApp(object):
         self.canv.create_line(x+1, y+dy-1, x+dx-1, y+dy-1, x+dx-1, y+1, fill=cs[2])
 
         if rect['type'] == 'directory':
-            text_x = x + self.render_params['text_offset_x']
-            text_y = y + self.render_params['text_offset_y']
+            text_x = x + self.config['tk_renderer']['text_offset_x']
+            text_y = y + self.config['tk_renderer']['text_offset_y']
             anchor = tk.NW
         elif rect['type'] == 'file':
             text_x = x + dx / 2
             text_y = y + dy / 2
             anchor = tk.CENTER
 
-        clipped_text = shorten(rect['text'], dx, self.render_params['text_size'])
+        clipped_text = shorten(rect['text'], dx, self.config['tk_renderer']['text_size'])
         self.canv.create_text(text_x, text_y, text=clipped_text, fill="black",
-                              anchor=anchor, font=("Helvectica", self.render_params['text_size']))
+                              anchor=anchor, font=("Helvectica", self.config['tk_renderer']['text_size']))
 
     def _find_rect(self, x, y):
         # TODO: it would be really nice if the rectangles and the tree nodes
@@ -238,7 +238,7 @@ class TreemongerApp(object):
         # TODO: remove from tree struct too - hacky workaround to the bigger refactor - doesn't work with deleting externally
         print('  delete: not yet implemented')
 
-def render_class(tree, compute_func, render_params, title, width=None, height=None):
+def init_app(scan_func, subdivide_func, config, title, width=None, height=None):
     """
     similar to render_class, but accepts the original tree rather than the computed rectangles
     this allows recalculation on resize etc
@@ -257,6 +257,6 @@ def render_class(tree, compute_func, render_params, title, width=None, height=No
     # would produce the interactivity i'd like to see in an svg)
 
     root = tk.Tk()
-    app = TreemongerApp(root, title, tree, compute_func, render_params, width, height)
+    app = TreemongerApp(root, title, scan_func, subdivide_func, config, width, height)
     app._render()
     root.mainloop()
