@@ -1,13 +1,13 @@
 # what
 
-treemonger is a disk space usage visualizer, inspired by [spacemonger](http://edgerunner.com/spacemonger)
+treemonger is a disk space usage visualizer, inspired by the old version of [spacemonger](https://www.stardock.com/products/spacemonger/)
 
 I like spacemonger because of a few details of its treemap rendering method, all of which contribute to considerably better "readability" than every other related tool I have tried.
 
 - it uses the [squarify](https://www.win.tue.nl/~vanwijk/stm.pdf) subdivision rules (or similar),
 - it shows the directory hierarchy with thin but nonzero margins,
 - it does *not* use "cushion" or "profile" gradients, but rather color for depth, and filename labels for maximum *glanceable* information,
-- it displays directory labels, at the cost of a bit of accuracy in relative sizing.
+- it displays directory labels, at the cost of a bit of accuracy in relative sizing (IMO sizing in this sort of tool is mainly useful for ranking, rather than fine comparison, so the loss of accuracy isn't a problem).
 
 The main motivation for treemonger is to replicate this treemap method. Unlike spacemonger, It is intended to work on Linux and Mac, in addition to Windows.
 

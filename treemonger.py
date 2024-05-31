@@ -24,7 +24,7 @@ import sys
 from utils import format_bytes
 from scan import get_directory_tree, print_directory_tree, tree_to_dict, dict_to_tree
 from subdivide import compute_rectangles
-from renderers.tk import render_class
+from renderers.tk import init_app
 
 # MAJOR TODOs:
 # - text rendering (renderers.tk.TreemongerApp.render_rect()):
@@ -38,6 +38,12 @@ from renderers.tk import render_class
 # - start local server and open html page that handles the interface (very simple)
 # - html page loads json file from local server
 #   - this is new to me, but very similar to mike bostock d3.js examples
+
+# color options
+# 1. depth -> color
+# 2. type -> color
+# 3. depth -> saturation, type -> hue
+
 
 config_file_path = os.path.expanduser('~/.config/treemonger.json')
 if not os.path.exists(config_file_path):
@@ -71,26 +77,31 @@ def main(args):
         print('  %s: %s' % (k, v))
 
     if 'file' in flags:
-        with open(flags['file'], 'r') as f:
-            data = json.load(f)
-        root = data['root']
-        t = dict_to_tree(data['tree'])
-        print('loaded scan from file')
-        save_to_archive = False
+        
+        def scan_func():
+            with open(flags['file'], 'r') as f:
+                data = json.load(f)
+            root = data['root']
+            t = dict_to_tree(data['tree'])
+            print('loaded scan from file')
+            save_to_archive = False
+            return t
     else:
-        t0 = dt.now()
-        t = get_directory_tree(
-            root,
-            exclude_dirs=flags['exclude-dirs'],
-            exclude_files=flags['exclude-files'],
-            exclude_filters=flags['exclude-filters'],
-            skip_mount=flags['skip-mount'],
-        )
-        t1 = dt.now()
+        def scan_func():
+            t0 = dt.now()
+            t = get_directory_tree(
+                root,
+                exclude_dirs=flags['exclude-dirs'],
+                exclude_files=flags['exclude-files'],
+                exclude_filters=flags['exclude-filters'],
+                skip_mount=flags['skip-mount'],
+            )
+            t1 = dt.now()
 
-        delta_t = (t1 - t0).seconds + (t1 - t0).microseconds/1e6
-        print('%f sec to scan %s / %s files' %
-              (delta_t, format_bytes(t.size), get_total_children(t)))
+            delta_t = (t1 - t0).seconds + (t1 - t0).microseconds/1e6
+            print('%f sec to scan %s / %s files' %
+                (delta_t, format_bytes(t.size), get_total_children(t)))
+            return t
 
     realroot = os.path.realpath(root)
     archive_filename = get_archive_location(flags, realroot, HOST, NOW)
@@ -106,34 +117,28 @@ def main(args):
         print('using latest recorded file (%s): %s' % (ts_str, fname))
         flags['file'] = fname
 
-    if not flags.get('file', False) and flags['save-to-archive']:
-        data = {
-            'tree': tree_to_dict(t),
-            'root': realroot,
-            'host': HOST,
-            'options': flags,
-            'scan_timestamp': NOW,
-            'scan_duration_seconds': delta_t,
-        }
+    print('skipping archive during refactor')
+    # if not config.flags.get('file', False) and config.flags['save-to-archive']:
+    #     data = {
+    #         'tree': tree_to_dict(t),
+    #         'root': realroot,
+    #         'host': HOST,
+    #         'options': flags,
+    #         'scan_timestamp': NOW,
+    #         'scan_duration_seconds': delta_t,
+    #     }
 
-        print('archiving results to:\n  %s' % archive_filename)
-        try:
-            if not os.path.exists(archive_path):
-                os.mkdir(archive_path)
-            with open(archive_filename, 'w') as f:
-                json.dump(data, f)
-        except Exception as exc:
-            print(exc)
-
-    # print(jsonpickle.encode(t))
-    # print_directory_tree(t)
-    # rects = compute_rectangles(t, [0, width], [0, height])
-    # render_tk(rects, width, height, title=os.path.realpath(root))
-    # render_class(rects, width, height, title=os.path.realpath(root))
+    #     print('archiving results to:\n  %s' % archive_filename)
+    #     try:
+    #         if not os.path.exists(archive_path):
+    #             os.mkdir(archive_path)
+    #         with open(archive_filename, 'w') as f:
+    #             json.dump(data, f)
+    #     except Exception as exc:
+    #         print(exc)
 
     title = os.path.realpath(root)
-    print('calling render_class')
-    render_class(t, compute_rectangles, config, title=title)
+    init_app(scan_func, compute_rectangles, config, title=title)
 
 
 def get_archive_location(flags, rootpath, host, timestamp):

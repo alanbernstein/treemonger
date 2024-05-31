@@ -53,6 +53,23 @@ class TreeNode(object):
         print('failed to getitem: %s (%s)' % (key, self))
         #print([c.name for c in self.children])
         return None
+    
+    def delete_child(self, key):
+        print('deleting child by key: %s' % key)
+        parts = key.split('/')
+        print('parts = %s' % parts)
+        if len(parts) == 1:
+            for n, c in enumerate(self.children):
+                if key == c.name or key + '/' == c.name:
+                    print(self.children)
+                    del self.children[n]
+                    print(self.children)
+                    break
+        else:
+            print(self.children)
+            print(parts[0])
+            print(self[parts[0]])
+            self[parts[0]].delete_child('/'.join(parts[1:]))
 
     def __repr__(self):
         return self.__str__()
@@ -117,7 +134,7 @@ def get_directory_tree(path,
             t.details['skip'] = 'exclude_dir'
             return t
         try:
-            files = os.listdir(path)
+            files = os.listdir(path) # TODO: use this - http://benhoyt.com/writings/scandir/
         except Exception as exc:
             t.details['skip'] = str(exc)
             # exc.errno = 13
@@ -180,47 +197,3 @@ if __name__ == '__main__':
     py_path = os.getenv('PY')
     t = get_directory_tree(py_path)
     print_directory_tree(t)
-
-
-########################################
-# deprecated
-def print_treemap_dict(t, L=0, max=3, printfiles=True):
-    # prints a formatted list as returned by gettree
-
-    if L < max:
-        name = os.path.basename(t['path'])
-
-        if os.path.isdir(t['path']):
-            name += os.sep
-
-        print('%s%s: %s' % ('  ' * L, name, t['bytes']))
-
-        if os.path.isdir(t['path']):
-            for child in t['children']:
-                print_treemap_dict(child, L + 1)
-
-
-def get_treemap_dict(path):
-    t = {'path': path,
-         'bytes': 0}
-
-    if os.path.islink(path):
-        return t
-
-    bytes = 0
-    if os.path.isdir(path):
-        try:
-            t['children'] = []
-            # for file in scandir(path)  # TODO: use this - http://benhoyt.com/writings/scandir/
-            for file in os.listdir(path):
-                t['children'].append(
-                    get_treemap_dict(path + os.path.sep + file))
-                bytes += t['children'][-1]['bytes']
-        except OSError as exc:
-            print('ignoring OSError at %s' % path)
-
-    elif os.path.isfile(path):
-        bytes = os.path.getsize(path)
-
-    t['bytes'] = bytes
-    return t
