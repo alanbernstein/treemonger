@@ -39,6 +39,12 @@ from renderers.tk import init_app
 # - html page loads json file from local server
 #   - this is new to me, but very similar to mike bostock d3.js examples
 
+# color options
+# 1. depth -> color
+# 2. type -> color
+# 3. depth -> saturation, type -> hue
+
+
 config_file_path = os.path.expanduser('~/.config/treemonger.json')
 if not os.path.exists(config_file_path):
     script_path = str(pathlib.Path(__file__).parent.resolve())
@@ -131,14 +137,7 @@ def main(args):
     #     except Exception as exc:
     #         print(exc)
 
-    # print(jsonpickle.encode(t))
-    # print_directory_tree(t)
-    # rects = compute_rectangles(t, [0, width], [0, height])
-    # render_tk(rects, width, height, title=os.path.realpath(root))
-    # render_class(rects, width, height, title=os.path.realpath(root))
-
     title = os.path.realpath(root)
-    print('calling render_class')
     init_app(scan_func, compute_rectangles, config, title=title)
 
 

@@ -134,7 +134,7 @@ def get_directory_tree(path,
             t.details['skip'] = 'exclude_dir'
             return t
         try:
-            files = os.listdir(path)
+            files = os.listdir(path) # TODO: use this - http://benhoyt.com/writings/scandir/
         except Exception as exc:
             t.details['skip'] = str(exc)
             # exc.errno = 13
@@ -197,47 +197,3 @@ if __name__ == '__main__':
     py_path = os.getenv('PY')
     t = get_directory_tree(py_path)
     print_directory_tree(t)
-
-
-########################################
-# deprecated
-def print_treemap_dict(t, L=0, max=3, printfiles=True):
-    # prints a formatted list as returned by gettree
-
-    if L < max:
-        name = os.path.basename(t['path'])
-
-        if os.path.isdir(t['path']):
-            name += os.sep
-
-        print('%s%s: %s' % ('  ' * L, name, t['bytes']))
-
-        if os.path.isdir(t['path']):
-            for child in t['children']:
-                print_treemap_dict(child, L + 1)
-
-
-def get_treemap_dict(path):
-    t = {'path': path,
-         'bytes': 0}
-
-    if os.path.islink(path):
-        return t
-
-    bytes = 0
-    if os.path.isdir(path):
-        try:
-            t['children'] = []
-            # for file in scandir(path)  # TODO: use this - http://benhoyt.com/writings/scandir/
-            for file in os.listdir(path):
-                t['children'].append(
-                    get_treemap_dict(path + os.path.sep + file))
-                bytes += t['children'][-1]['bytes']
-        except OSError as exc:
-            print('ignoring OSError at %s' % path)
-
-    elif os.path.isfile(path):
-        bytes = os.path.getsize(path)
-
-    t['bytes'] = bytes
-    return t
