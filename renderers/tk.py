@@ -212,6 +212,7 @@ class TreemongerApp(object):
         # 1. total descendants
 
     def copy_path(self, ev):
+        # https://unix.stackexchange.com/questions/139191/whats-the-difference-between-primary-selection-and-clipboard-buffer
         rect = self._find_rect(ev.x, ev.y)
         if pyperclip_present:
             pyperclip.copy(rect['path'])

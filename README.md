@@ -16,7 +16,7 @@ treemonger is a GUI app out of necessity; TUI tools like [ncdu](https://dev.yorh
 In lieu of a fully-featured GUI, the app window is just a canvas. UI actions are accessible via simple keystrokes and mouse buttons.
 
 example:
-[[./example.png]]
+[example image](./example.png)
 
 # install
 
