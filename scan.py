@@ -53,6 +53,23 @@ class TreeNode(object):
         print('failed to getitem: %s (%s)' % (key, self))
         #print([c.name for c in self.children])
         return None
+    
+    def delete_child(self, key):
+        print('deleting child by key: %s' % key)
+        parts = key.split('/')
+        print('parts = %s' % parts)
+        if len(parts) == 1:
+            for n, c in enumerate(self.children):
+                if key == c.name or key + '/' == c.name:
+                    print(self.children)
+                    del self.children[n]
+                    print(self.children)
+                    break
+        else:
+            print(self.children)
+            print(parts[0])
+            print(self[parts[0]])
+            self[parts[0]].delete_child('/'.join(parts[1:]))
 
     def __repr__(self):
         return self.__str__()

@@ -1,4 +1,5 @@
 import os
+import shutil
 import sys
 
 try:
@@ -17,24 +18,27 @@ from .colormap import colormap
 
 class TreemongerApp(object):
     def __init__(self, master, title, scan_func, compute_func, config, width=None, height=None):
-
-        width = width or master.winfo_screenwidth()/2
-        height = height or master.winfo_screenheight()/2
         self.config = config
+        self.action_map_mouse = config['mouse']
+        self.action_map_keyboard = config['keyboard']
         print(self.config)
 
-        self.master = master
-        self.tree = scan_func()
-        self.render_root = '/'  # walk up and down tree to zoom
+        self.scan_func = scan_func
+        self.tree = self.scan_func()
         self.scan_root = self.tree.path
+
         self.compute_func = compute_func
-        self.width = width
-        self.height = height
+        self.render_root = '/'  # walk up and down tree to zoom
+
+        self.master = master
         self.frame = tk.Frame(self.master)
-
-
         screen_width = master.winfo_screenwidth()
         screen_height = master.winfo_screenheight()
+        width = width or screen_width/2
+        height = height or screen_height/2
+        self.width = width
+        self.height = height
+
         x = (screen_width / 2) - (width / 2)  # default window x position (centered)
         y = (screen_height / 2) - (height / 2)  # default window y position (centered)
         master.geometry('%dx%d+%d+%d' % (width, height, x, y))
@@ -45,15 +49,12 @@ class TreemongerApp(object):
         # canv.grid(row=0, column=0, columnspan=3);
         self.root_rect = self.canv.create_rectangle(0, 0, 0, 0, width=1,
                                                     fill="white", outline='black')
-        self.canv.bind("<Configure>", self._on_resize)
         self.master.bind("<KeyPress>", self._on_keydown)
         self.master.bind("<KeyRelease>", self._on_keyup)
+        self.canv.bind("<Configure>", self._on_resize)
         self.canv.bind("<Button>", self._on_click)
         self.canv.bind_all("<MouseWheel>", self._on_mousewheel)
         self.frame.pack()
-
-        self.action_map_mouse = config['mouse']
-        self.action_map_keyboard = config['keyboard']
 
         self._print_usage()
 
@@ -177,9 +178,7 @@ class TreemongerApp(object):
         print('  %s (%s)' % (rect['path'], rect['bytes']))
 
     def refresh(self, ev):
-        print('  refresh: not yet implemented')
-        # TODO this requires passing a signal to scanner, and receiving the result
-        # perhaps properly requires a refactor
+        self.tree = self.scan_func()
         self._render()
 
     def zoom_top(self, ev):
@@ -204,7 +203,7 @@ class TreemongerApp(object):
         self.render_root = '/'.join(parts2)
 
         # then render
-        self.refresh(ev)
+        self._render(ev)
 
     def cycle_mode(self, ev):
         print('  cycle_mode: not yet implemented')
@@ -233,10 +232,24 @@ class TreemongerApp(object):
 
     def delete_file(self, ev):
         rect = self._find_rect(ev.x, ev.y)
-        rect['path']
-        # os.rm(rect['path'])
-        # TODO: remove from tree struct too - hacky workaround to the bigger refactor - doesn't work with deleting externally
-        print('  delete: not yet implemented')
+        if rect['type'] == 'directory':
+            shutil.rmtree(rect['path'])
+        else:
+            os.remove(rect['path'])
+        
+        # TODO: don't rescan the whole tree, instead remove node directly
+        # NOTE: this has to be SUPER robust, because one potential failure
+        # mode is that the real file gets deleted, the app updates the render,
+        # but does NOT update the canvas. then, the next delete event can delete
+        # an unexpected file - BAD
+
+        #path = '/'.join(rect['path'].split('/')[1:])
+        #self.tree.delete_child(path)
+        #self._render()
+        
+        self.refresh(ev)
+        
+        print('  delete: %s' % rect['path'])
 
 def init_app(scan_func, subdivide_func, config, title, width=None, height=None):
     """
