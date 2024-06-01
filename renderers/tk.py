@@ -63,7 +63,10 @@ class TreemongerApp(object):
         for mouse_button, action_func_name in sorted(self.action_map_mouse.items()):
             print('  mouse<%s>: %s' % (mouse_button, action_func_name))
         for key, action_func_name in sorted(self.action_map_keyboard.items()):
-            print('  "%s": %s' % (key, action_func_name))
+            if 'delete' in action_func_name:
+                print('  "%s": %s (WORK IN PROGRESS, USE AT YOUR OWN RISK!)' % (key, action_func_name))
+            else:
+                print('  "%s": %s' % (key, action_func_name))
 
     def _render(self, width=None, height=None):
         width = width or self.width
