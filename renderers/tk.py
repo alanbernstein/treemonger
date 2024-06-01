@@ -19,8 +19,8 @@ from .colormap import colormap
 class TreemongerApp(object):
     def __init__(self, master, title, scan_func, compute_func, config, width=None, height=None):
         self.config = config
-        self.action_map_mouse = config['mouse']
-        self.action_map_keyboard = config['keyboard']
+        self.action_map_mouse = self._parse_keycombos(config['mouse'])
+        self.action_map_keyboard = self._parse_keycombos(config['keyboard'])
         print(self.config)
 
         self.scan_func = scan_func
@@ -57,6 +57,15 @@ class TreemongerApp(object):
         self.frame.pack()
 
         self._print_usage()
+
+    def _parse_keycombos(self, cnf):
+        res = {}
+        for k, v in cnf.items():
+            if '+' in k:
+                k = k.split('+')
+            print(k, tuple(k), v)
+            res[tuple(k)] = v
+        return res
 
     def _print_usage(self):
         print('UI usage:')
@@ -148,11 +157,23 @@ class TreemongerApp(object):
 
     def _on_click(self, ev):
         mouse_button = ev.num
-        print('mouse<%d>' % mouse_button)
+        s = ev.state
+        modifiers = []
+        if (s & 0x1):
+            modifiers.append('shift')
+        if (s & 0x4):
+            modifiers.append('ctrl')
+        if (s & 0x88):
+            modifiers.append('alt')
+
+        print(modifiers, mouse_button)
+        combo = tuple(modifiers + [str(mouse_button)])
+        print(combo)
+        print('mouse<%d> %s' % (mouse_button, combo))
         self.info(ev)
-        action_func_name = self.action_map_mouse.get(str(mouse_button), '')
+        action_func_name = self.action_map_mouse.get(combo, '')
         if action_func_name == '':
-            print('  event mouse<%d>: no action defined' % mouse_button)
+            print('  event mouse<%s>: no action defined' % (combo, ))
             return
         action_func = getattr(self, action_func_name)
         action_func(ev)
@@ -163,10 +184,21 @@ class TreemongerApp(object):
 
     def _on_keyup(self, ev):
         key = ev.keysym
-        print('keyup: "%s"' % key)
-        action_func_name = self.action_map_keyboard.get(key, '')
+        s = ev.state
+        modifiers = []
+        if (s & 0x1):
+            modifiers.append('shift')
+        if (s & 0x4):
+            modifiers.append('ctrl')
+        if (s & 0x88):
+            modifiers.append('alt')
+        print(modifiers, key)
+        combo = tuple(modifiers + [key.lower()])
+        print(combo)
+        print('keyup: "%s" (%s)' % (key, combo))
+        action_func_name = self.action_map_keyboard.get(combo, '')
         if action_func_name == '':
-            print('  event "%s": no action defined' % key)
+            print('  event "%s": no action defined' % (combo, ))
             return
         action_func = getattr(self, action_func_name)
         action_func(ev)
@@ -182,6 +214,7 @@ class TreemongerApp(object):
 
     def refresh(self, ev):
         self.tree = self.scan_func()
+        print('  refresh')
         self._render()
 
     def zoom_top(self, ev):

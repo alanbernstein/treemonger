@@ -11,6 +11,7 @@
     "color_cycle": ["#ff7f7f", "#ffbf7f", "#ffff00", "#7fff7f", "#7fffff", "#bfbfff", "#bfbfbf", "#ff7fff"],
     "mouse": {
         "1": "info",
+        "ctrl+1": "info",
         "2": "copy_path",
         "3": "delete_file",
         "4": "zoom_out",
@@ -26,7 +27,10 @@
         "d": "delete_file",
         "c": "copy_path",
         "o": "open_location",
-        "i": "info"
+        "i": "info",
+        "ctrl+r": "refresh",
+        "alt+c": "copy_path",
+        "shift+i": "info"
     },
     "tk_renderer": {
         "text_offset_x": 3,
@@ -36,6 +40,6 @@
         "xpad": 0,
         "ypad": 0,
         "min_box_size": 10,
-        "max_filesystem_depth": 16        
+        "max_filesystem_depth": 16
     }
 }
