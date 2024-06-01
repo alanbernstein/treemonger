@@ -74,7 +74,7 @@ UI actions are customizable, with default configuration:
 - "Down": `zoom_in` (down arrow)
 - "Up": `zoom_out` (up arrow)
 - "c": `copy_path`
-- "d": `delete_file` ($${\color{red}WORK IN PROGRESS, USE AT YOUR OWN RISK}$$)
+- "d": `delete_file` (${\color{red}WORK\ IN\ PROGRESS,\ USE\ AT\ YOUR\ OWN\ RISK}$)
 - "i": `info`
 - "m": `cycle_mode` (not yet implemented)
 - "o": `open_location`
