@@ -86,6 +86,8 @@ Actions are simple member functions in renderers/tk.py:TreemongerApp.
 
 (Mouse button mapping in tk is platform-dependent. Rather than try to interpret what they mean in a coherent way, I chose to make the interface fully customizable: update the config file to whatever works for you.)
 
+Modifier keys are supported. Check `config.json` for examples.
+
 # future work
 
 - refactor things to enable delete/refresh to work properly
