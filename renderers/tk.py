@@ -203,6 +203,19 @@ class TreemongerApp(object):
         action_func = getattr(self, action_func_name)
         action_func(ev)
 
+    def context_menu(self, ev):
+        m = tk.Menu(self.master, tearoff = 0)
+        m.add_command(label ="Info (i)", command=lambda: self.info(ev))
+        m.add_command(label ="Copy path (c)", command=lambda: self.copy_path(ev))
+        m.add_command(label ="Open location (o)", command=lambda: self.open_location(ev))
+        m.add_command(label ="Refresh (r)", command=lambda: self.refresh(ev))
+        m.add_separator()
+        m.add_command(label ="Delete (d)", command=lambda: self.delete_file(ev))
+        try:
+            m.tk_popup(ev.x_root, ev.y_root)
+        finally:
+            m.grab_release()
+
     def quit(self, ev):
         sys.exit(0)
 
