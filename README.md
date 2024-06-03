@@ -13,7 +13,7 @@ The main motivation for treemonger is to replicate this treemap method. Unlike s
 
 treemonger is a GUI app out of necessity; TUI tools like [ncdu](https://dev.yorhel.nl/ncdu) also have their place, but the pixel-level effect I'm looking for requires a canvas.
 
-In lieu of a fully-featured GUI, the app window is just a canvas. UI actions are accessible via simple keystrokes and mouse buttons.
+In lieu of a fully-featured GUI, the app window is just a canvas. UI actions are accessible via keyboard/mouse shortcuts and a context menu.
 
 example:
 ![example image](./example.png)
@@ -67,19 +67,21 @@ Config sections include:
 UI actions are customizable, with default configuration:
 
 - mouse<1>: `info` (left click in ubuntu)
+- ctrl+mouse<1>: `info`
 - mouse<2>: `copy_path` (middle click in ubuntu)
-- mouse<3>: `delete_file` (right click in ubuntu)
+- mouse<3>: `context_menu` (right click in ubuntu)
 - mouse<4>: `zoom_out` (wheel up in ubuntu)
 - mouse<5>: `zoom_in` (wheel down in ubuntu)
 - "Down": `zoom_in` (down arrow)
 - "Up": `zoom_out` (up arrow)
 - "c": `copy_path`
-- "d": `delete_file` (${\color{red}WORK\ IN\ PROGRESS,\ USE\ AT\ YOUR\ OWN\ RISK}$)
+- "d": `delete_tree` ($`{\color{red}WORK\ IN\ PROGRESS,\ SET\ SAFE\_MODE=False\ TO\ USE}`$)
 - "i": `info`
 - "m": `cycle_mode` (not yet implemented)
 - "o": `open_location`
 - "q": `quit`
 - "r": `refresh`
+- "ctrl+r": `refresh`
 - "t": `zoom_top`
 
 Actions are simple member functions in renderers/tk.py:TreemongerApp.
