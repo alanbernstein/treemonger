@@ -21,7 +21,6 @@ class TreemongerApp(object):
         self.config = config
         self.action_map_mouse = self._parse_keycombos(config['mouse'])
         self.action_map_keyboard = self._parse_keycombos(config['keyboard'])
-        print(self.config)
 
         self.scan_func = scan_func
         self.tree = self.scan_func()
@@ -63,8 +62,11 @@ class TreemongerApp(object):
         for k, v in cnf.items():
             if '+' in k:
                 k = k.split('+')
-            print(k, tuple(k), v)
-            res[tuple(k)] = v
+            # print(k, tuple(k), v)
+            if k in ['Up', 'Down', 'Right', 'Left']:
+                res[(k,)] = v
+            else:
+                res[tuple(k)] = v
         return res
 
     def _print_usage(self):
@@ -193,7 +195,11 @@ class TreemongerApp(object):
         if (s & 0x88):
             modifiers.append('alt')
         print(modifiers, key)
-        combo = tuple(modifiers + [key.lower()])
+        key_ = key
+        if key_ not in ['Up', 'Down', 'Left', 'Right']:
+            key_ = key_.lower()
+
+        combo = tuple(modifiers + [key_])
         print(combo)
         print('keyup: "%s" (%s)' % (key, combo))
         action_func_name = self.action_map_keyboard.get(combo, '')
@@ -204,13 +210,17 @@ class TreemongerApp(object):
         action_func(ev)
 
     def context_menu(self, ev):
+        # TODO: generalize
+        rect = self._find_rect(ev.x, ev.y)
         m = tk.Menu(self.master, tearoff = 0)
-        m.add_command(label ="Info (i)", command=lambda: self.info(ev))
-        m.add_command(label ="Copy path (c)", command=lambda: self.copy_path(ev))
-        m.add_command(label ="Open location (o)", command=lambda: self.open_location(ev))
-        m.add_command(label ="Refresh (r)", command=lambda: self.refresh(ev))
+        m.add_command(label=rect['path'], foreground='grey', command=lambda: self.info(ev))
         m.add_separator()
-        m.add_command(label ="Delete (d)", command=lambda: self.delete_file(ev))
+        m.add_command(label="info", underline=0, command=lambda: self.info(ev))
+        m.add_command(label="copy path", underline=0, command=lambda: self.copy_path(ev))
+        m.add_command(label="open location", underline=0, command=lambda: self.open_location(ev))
+        m.add_command(label="refresh", underline=0, command=lambda: self.refresh(ev))
+        m.add_separator()
+        m.add_command(label="delete", underline=0, command=lambda: self.delete_file(ev))
         try:
             m.tk_popup(ev.x_root, ev.y_root)
         finally:
@@ -252,7 +262,7 @@ class TreemongerApp(object):
         self.render_root = '/'.join(parts2)
 
         # then render
-        self._render(ev)
+        self._render()
 
     def cycle_mode(self, ev):
         print('  cycle_mode: not yet implemented')
@@ -279,13 +289,18 @@ class TreemongerApp(object):
         print('  open location: "%s"' % location)
         open_file(location)
 
-    def delete_file(self, ev):
+    def delete_tree(self, ev):
         rect = self._find_rect(ev.x, ev.y)
+        SAFE_MODE = True
+        if SAFE_MODE:
+            print('  delete_tree: not available with SAFE_MODE = True')
+            return
+
         if rect['type'] == 'directory':
             shutil.rmtree(rect['path'])
         else:
             os.remove(rect['path'])
-        
+
         # TODO: don't rescan the whole tree, instead remove node directly
         # NOTE: this has to be SUPER robust, because one potential failure
         # mode is that the real file gets deleted, the app updates the render,
@@ -295,25 +310,25 @@ class TreemongerApp(object):
         #path = '/'.join(rect['path'].split('/')[1:])
         #self.tree.delete_child(path)
         #self._render()
-        
+
         self.refresh(ev)
-        
-        print('  delete: %s' % rect['path'])
+
+        print('  delete_tree: %s' % rect['path'])
 
 def init_app(scan_func, subdivide_func, config, title, width=None, height=None):
     """
     similar to render_class, but accepts the original tree rather than the computed rectangles
     this allows recalculation on resize etc
     """
-    # TODO: invert the structure so the TK app has a member function to 
+    # TODO: invert the structure so the TK app has a member function to
     # compute the rects. 'render_class" design assumes we'll define
     # other types of renderer, but the only other idea i have for that is
     # svg, which produces a static output file. just simplify for the TK case.
-    
+
     # svg might be interactive, but
-    # it won't use a 'refresh' action in the same way. that would probably 
+    # it won't use a 'refresh' action in the same way. that would probably
     # be best done with a self-hosted web app... lightweight JS wrapper to
-    # provide hot-reload capability, with a python backend that uses modules 
+    # provide hot-reload capability, with a python backend that uses modules
     # from here for scanner, filesystem actions, maybe 2D subdivision (or use
     # an off-the-shelf vis library for that? not sure if anything exists that
     # would produce the interactivity i'd like to see in an svg)

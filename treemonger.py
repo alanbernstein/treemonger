@@ -49,7 +49,6 @@ config_file_path = os.path.expanduser('~/.config/treemonger.json')
 if not os.path.exists(config_file_path):
     script_path = str(pathlib.Path(__file__).parent.resolve())
     config_file_path = script_path + '/config.json'
-print('using config file: %s' % config_file_path)
 
 NOW = dt.strftime(dt.now(), '%Y%m%d-%H%M%S')
 HOST = os.getenv('MACHINE', socket.gethostname())
@@ -107,7 +106,6 @@ def main(args):
     archive_filename = get_archive_location(flags, realroot, HOST, NOW)
     archive_path = os.path.dirname(archive_filename)
 
-    print(flags.get('file-latest', False))
     if flags.get('file-latest', False):
         fname = get_latest_file_for_pwd(archive_path)
         ts = os.stat(fname).st_mtime
