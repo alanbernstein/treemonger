@@ -41,6 +41,7 @@
         "xpad": 0,
         "ypad": 0,
         "min_box_size": 10,
-        "max_filesystem_depth": 16
+        "max_filesystem_depth": 16,
+        "size_mode": "bytes"
     }
 }

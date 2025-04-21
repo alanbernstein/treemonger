@@ -67,11 +67,17 @@ def compute_rectangles(node, xlim, ylim, params, recurse_level=0, dir_level=0, r
         if node_type == 'directory':
             children = node.children
             subdir_level = 1
-            total_size = node.size
+            if params['size_mode'] == 'bytes':
+                total_size = node.size
+            if params['size_mode'] == 'count':
+                total_size = len(node.children)
         else:
             children = node
             subdir_level = 0
-            total_size = sum([x.size for x in node])
+            if params['size_mode'] == 'bytes':
+                total_size = sum([x.size for x in node])
+            if params['size_mode'] == 'count':
+                total_size = len(node)
 
         groupA, xA, yA, groupB, xB, yB = squarify(children, xlim, ylim, params['xpad'], params['ypad'], total_size=total_size)
 
