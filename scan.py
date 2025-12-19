@@ -106,9 +106,15 @@ def get_directory_tree(path,
                        exclude_filters=[],
                        skip_mount=False,
                        slow_details=False):
-    realpath = os.path.realpath(path)
-    base = os.path.basename(path)
+
     t = TreeNode(path)
+    try:
+        realpath = os.path.realpath(path)
+    except Exception as exc:
+        t.details['skip'] = str(exc)
+        print('skipping %s' % (exc))
+        return t
+    base = os.path.basename(path)
     size = 0
 
     if os.path.islink(path):
@@ -130,6 +136,8 @@ def get_directory_tree(path,
 
     elif os.path.isdir(path):
         # directory
+        if path.startswith('/proc'):
+            import ipdb; ipdb.set_trace()
         if base in exclude_dirs:
             t.details['skip'] = 'exclude_dir'
             return t

@@ -25,7 +25,7 @@ pip install -r requirements.txt
 ```
 
 one hard requirement:
-- tkinter
+- tkinter (`brew install python-tk` on mac, maybe)
 
 can be used if available:
 - pyperclip (clipboard functionality)

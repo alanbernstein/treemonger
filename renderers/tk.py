@@ -9,6 +9,7 @@ except:
     pyperclip_present = False
 
 import tkinter as tk
+from PIL import Image, ImageTk
 
 from utils import shorten, open_file
 from .colormap import colormap
@@ -17,6 +18,8 @@ from .colormap import colormap
 # then the mouse click hit test can retrieve the full struct directly
 
 class TreemongerApp(object):
+    queue = []
+
     def __init__(self, master, title, scan_func, compute_func, config, width=None, height=None):
         self.config = config
         self.action_map_mouse = self._parse_keycombos(config['mouse'])
@@ -43,6 +46,8 @@ class TreemongerApp(object):
         master.geometry('%dx%d+%d+%d' % (width, height, x, y))
         master.title(title)
 
+        self._context_menu = None
+
         self.canv = tk.Canvas(master, bg='black')
         self.canv.pack(expand=True, fill=tk.BOTH)  # ?
         # canv.grid(row=0, column=0, columnspan=3);
@@ -60,7 +65,7 @@ class TreemongerApp(object):
     def _parse_keycombos(self, cnf):
         res = {}
         for k, v in cnf.items():
-            if '+' in k:
+            if k != '+' and '+' in k:
                 k = k.split('+')
             # print(k, tuple(k), v)
             if k in ['Up', 'Down', 'Right', 'Left']:
@@ -78,6 +83,14 @@ class TreemongerApp(object):
                 print('  "%s": %s (WORK IN PROGRESS, USE AT YOUR OWN RISK!)' % (key, action_func_name))
             else:
                 print('  "%s": %s' % (key, action_func_name))
+
+    def _cleanup_context_menu(self):
+        if self._context_menu:
+            #self._context_menu.grab_release()
+            #self.context_menu_is_open = False
+            print('cleaning up context menu')
+            return True
+        return False
 
     def _render(self, width=None, height=None):
         width = width or self.width
@@ -147,17 +160,23 @@ class TreemongerApp(object):
                 return rect
 
     def _on_mousewheel(self, ev):
+        if self._cleanup_context_menu():
+            return
         print('mousewheel: %s' % ev)
         rect = self._find_rect(ev.x, ev.y)
         print('zooming on: "%s"' % (rect['path']))
 
     def _on_resize(self, ev):
+        if self._cleanup_context_menu():
+            return
         print('resized: %d %d' % (ev.width, ev.height))
         self.width, self.height = ev.width, ev.height
         # self.canv.coords(self.root_rect, 1, 1, ev.width - 2, ev.height - 2)
         self._render()
 
     def _on_click(self, ev):
+        if self._cleanup_context_menu():
+            return
         mouse_button = ev.num
         s = ev.state
         modifiers = []
@@ -181,10 +200,14 @@ class TreemongerApp(object):
         action_func(ev)
 
     def _on_keydown(self, ev):
+        if self._cleanup_context_menu():
+            return
         key = ev.keysym
         print('keydown: "%s"' % key)
 
     def _on_keyup(self, ev):
+        if self._cleanup_context_menu():
+            return
         key = ev.keysym
         s = ev.state
         modifiers = []
@@ -210,19 +233,25 @@ class TreemongerApp(object):
         action_func(ev)
 
     def context_menu(self, ev):
-        # TODO: generalize
         rect = self._find_rect(ev.x, ev.y)
+        # TODO: generalize
+        # TODO: may want to init menu once and reconfigure per event
         m = tk.Menu(self.master, tearoff = 0)
-        m.add_command(label=rect['path'], foreground='grey', command=lambda: self.info(ev))
+        m.add_command(label=rect['path'], foreground='grey', command=lambda: None)
         m.add_separator()
         m.add_command(label="info", underline=0, command=lambda: self.info(ev))
         m.add_command(label="copy path", underline=0, command=lambda: self.copy_path(ev))
         m.add_command(label="open location", underline=0, command=lambda: self.open_location(ev))
         m.add_command(label="refresh", underline=0, command=lambda: self.refresh(ev))
         m.add_separator()
-        m.add_command(label="delete", underline=0, command=lambda: self.delete_file(ev))
+        m.add_command(label="add to delete queue", underline=0, command=lambda: self.add_to_queue(ev, "delete"))
+        m.add_command(label="print queue", underline=0, command=lambda: self.print_queue(ev))
+        m.add_command(label="execute queue", underline=1, command=lambda: self.execute_queue(ev))
+        #m.add_command(label="delete", underline=0, command=lambda: self.delete_file(ev))
         try:
             m.tk_popup(ev.x_root, ev.y_root)
+            # self._context_menu = m
+            # self._context_menu_is_open = True
         finally:
             m.grab_release()
 
@@ -285,9 +314,33 @@ class TreemongerApp(object):
 
     def open_location(self, ev):
         rect = self._find_rect(ev.x, ev.y)
-        location = os.path.dirname(rect['path'])
+        if rect['type'] == 'directory':
+            location = rect['path']
+        else:
+            location = os.path.dirname(rect['path'])
         print('  open location: "%s"' % location)
         open_file(location)
+
+    def add_to_queue(self, ev, action):
+        rect = self._find_rect(ev.x, ev.y)
+        self.queue.append({
+            "action": action,
+            "path": rect["path"],
+        })
+
+    def print_queue(self, ev):
+        print('action queue:')
+        for a in self.queue:
+            print(f"  {a['action']}: {a['path']}")
+
+    def execute_queue(self, ev):
+        for a in self.queue:
+            if a["action"] == "delete":
+                print(f"rm \"{a['path']}\"")
+                #os.remove(a["path"])
+
+    def clear_queue(self, ev):
+        self.queue = []
 
     def delete_tree(self, ev):
         rect = self._find_rect(ev.x, ev.y)
@@ -334,6 +387,11 @@ def init_app(scan_func, subdivide_func, config, title, width=None, height=None):
     # would produce the interactivity i'd like to see in an svg)
 
     root = tk.Tk()
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    icon_fname = current_dir + "/../treemonger-icon.png"
+    icon_image = Image.open(icon_fname)
+    icon = ImageTk.PhotoImage(icon_image)
+    root.iconphoto(False, ImageTk.PhotoImage(file=icon_fname))
     app = TreemongerApp(root, title, scan_func, subdivide_func, config, width, height)
     app._render()
     root.mainloop()

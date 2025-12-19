@@ -26,11 +26,15 @@ from scan import get_directory_tree, print_directory_tree, tree_to_dict, dict_to
 from subdivide import compute_rectangles
 from renderers.tk import init_app
 
+from ipdb import iex
+
 # MAJOR TODOs:
 # - text rendering (renderers.tk.TreemongerApp.render_rect()):
 #   - make clipping better
 #   - scale text to fill rectangle more, so bigger files have bigger text
 # - size rectangles by text linecount
+
+# make --exclude-dirs work with --file (need to filter before render, rather than during scan)
 
 # plan
 # - scan filesystem and create JSON file with full treemap definition
@@ -53,6 +57,7 @@ if not os.path.exists(config_file_path):
 NOW = dt.strftime(dt.now(), '%Y%m%d-%H%M%S')
 HOST = os.getenv('MACHINE', socket.gethostname())
 
+@iex
 def main(args):
     # TODO: refactor into class so archive_path etc can be shared
     config = parse_config()
@@ -67,7 +72,7 @@ def main(args):
         if cli_flags.get(k, []) == []:
             continue
         if type(v) is list:
-            flags[k] = flags[k].extend(cli_flags[k])
+            flags[k].extend(cli_flags[k])
         else:
             flags[k] = cli_flags[k]
 
@@ -167,6 +172,7 @@ def get_total_children(t):
 
 
 def parse_config():
+    print('loading config from %s' % config_file_path)
     with open(config_file_path) as f:
         config = json.load(f)
     return config
@@ -201,10 +207,15 @@ def parse_args(args):
                     cli_flags['file-latest'] = True
                     print('set file-latest = true')
             if arg.startswith('--skip-mount') or arg == '-x':
-                cli_flags['skip-mount'] = True
+                if 'false' in arg.lower():
+                    cli_flags['skip-mount'] = False
+                else:
+                    cli_flags['skip-mount'] = True
 
         else:
             root = arg.rstrip('/')
+
+    print(cli_flags)
 
     return root, cli_flags
 

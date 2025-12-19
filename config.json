@@ -1,6 +1,6 @@
 {
     "flags": {
-        "exclude-dirs": [".git"],
+        "exclude-dirs": [".git", "/proc", "/media"],
         "exclude-files": [],
         "exclude-filters": [],
         "save-to-archive": true,
@@ -29,9 +29,9 @@
         "c": "copy_path",
         "o": "open_location",
         "i": "info",
-        "ctrl+r": "refresh",
-        "alt+c": "copy_path",
-        "shift+i": "info"
+        "ctrl+p": "refresh",
+        "alt+l": "copy_path",
+        "shift+e": "info"
     },
     "tk_renderer": {
         "text_offset_x": 3,
