@@ -6,6 +6,7 @@
         "save-to-archive": true,
         "archive-base-path": "~/treemonger",
         "archive-name-pattern": "%host/%root-%timestamp",
+        "trash-log-pattern": "~/treemonger/%host-trashed/%timestamp.txt",
         "skip-mount": false
     },
     "color_cycle": ["#ff7f7f", "#ffbf7f", "#ffff00", "#7fff7f", "#7fffff", "#bfbfff", "#bfbfbf", "#ff7fff"],
@@ -20,12 +21,13 @@
     },
     "keyboard": {
         "q": "quit",
-        "r ": "refresh",
+        "r": "refresh",
         "m": "cycle_mode",
         "Up": "zoom_out",
         "Down": "zoom_in",
-        "t": "zoom_top",
+        "z": "zoom_top",
         "d": "delete_tree",
+        "t": "trash_path",
         "c": "copy_path",
         "o": "open_location",
         "i": "info",

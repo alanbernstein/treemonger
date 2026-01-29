@@ -1,3 +1,4 @@
+import datetime
 import os
 import shutil
 import sys
@@ -8,11 +9,17 @@ try:
 except:
     pyperclip_present = False
 
+try:
+    from send2trash import send2trash
+    send2trash_present = True
+except:
+    send2trash_present = False
+
 import tkinter as tk
 from PIL import Image, ImageTk
 
 from utils import shorten, open_file
-from .colormap import colormap
+from .colormap import colormap, trashed_color, trashed_text_color
 
 # TODO: maybe the compute_rectangles function should add rect positions to the tree struct directly
 # then the mouse click hit test can retrieve the full struct directly
@@ -24,6 +31,12 @@ class TreemongerApp(object):
         self.config = config
         self.action_map_mouse = self._parse_keycombos(config['mouse'])
         self.action_map_keyboard = self._parse_keycombos(config['keyboard'])
+
+        # Track trashed items for visual indication (path -> True)
+        self.trashed_paths = set()
+        # Store canvas item IDs for each rect path for fast partial updates
+        # path -> {'rect_id': id, 'highlight_id': id, 'shadow_id': id, 'text_id': id}
+        self.canvas_items = {}
 
         self.scan_func = scan_func
         self.tree = self.scan_func()
@@ -97,6 +110,9 @@ class TreemongerApp(object):
         height = height or self.height
         print('rendering %s %dx%d' % (self.render_root, width, height))
 
+        # Clear canvas item tracking (IDs will be recreated)
+        self.canvas_items = {}
+
         # descend tree according to zoomstate variable render_root
         render_tree = self.tree
         render_root = self.render_root.lstrip(self.scan_root)
@@ -133,11 +149,19 @@ class TreemongerApp(object):
         dy = rect['dy']
         d = rect['depth']
         d = (d + base_color_depth) % len(colormap)
-        cs = colormap[d]
 
-        self.canv.create_rectangle(x, y, x+dx, y+dy, width=1, fill=cs[0], outline='black')
-        self.canv.create_line(x+1, y+dy-1, x+1, y+1, x+dx-1, y+1, fill=cs[1])
-        self.canv.create_line(x+1, y+dy-1, x+dx-1, y+dy-1, x+dx-1, y+1, fill=cs[2])
+        # Use trashed colors if this path has been trashed
+        is_trashed = rect['path'] in self.trashed_paths
+        if is_trashed:
+            cs = trashed_color
+            text_fill = trashed_text_color
+        else:
+            cs = colormap[d]
+            text_fill = "black"
+
+        rect_id = self.canv.create_rectangle(x, y, x+dx, y+dy, width=1, fill=cs[0], outline='black')
+        highlight_id = self.canv.create_line(x+1, y+dy-1, x+1, y+1, x+dx-1, y+1, fill=cs[1])
+        shadow_id = self.canv.create_line(x+1, y+dy-1, x+dx-1, y+dy-1, x+dx-1, y+1, fill=cs[2])
 
         if rect['type'] == 'directory':
             text_x = x + self.config['tk_renderer']['text_offset_x']
@@ -149,8 +173,16 @@ class TreemongerApp(object):
             anchor = tk.CENTER
 
         clipped_text = shorten(rect['text'], dx, self.config['tk_renderer']['text_size'])
-        self.canv.create_text(text_x, text_y, text=clipped_text, fill="black",
+        text_id = self.canv.create_text(text_x, text_y, text=clipped_text, fill=text_fill,
                               anchor=anchor, font=("Helvectica", self.config['tk_renderer']['text_size']))
+
+        # Store canvas item IDs for fast partial updates
+        self.canvas_items[rect['path']] = {
+            'rect_id': rect_id,
+            'highlight_id': highlight_id,
+            'shadow_id': shadow_id,
+            'text_id': text_id,
+        }
 
     def _find_rect(self, x, y):
         # TODO: it would be really nice if the rectangles and the tree nodes
@@ -243,6 +275,8 @@ class TreemongerApp(object):
         m.add_command(label="copy path", underline=0, command=lambda: self.copy_path(ev))
         m.add_command(label="open location", underline=0, command=lambda: self.open_location(ev))
         m.add_command(label="refresh", underline=0, command=lambda: self.refresh(ev))
+        m.add_separator()
+        m.add_command(label="move to trash", underline=8, command=lambda: self.trash_path(ev))
         m.add_separator()
         m.add_command(label="add to delete queue", underline=0, command=lambda: self.add_to_queue(ev, "delete"))
         m.add_command(label="print queue", underline=0, command=lambda: self.print_queue(ev))
@@ -367,6 +401,58 @@ class TreemongerApp(object):
         self.refresh(ev)
 
         print('  delete_tree: %s' % rect['path'])
+
+    def _mark_rect_as_trashed(self, path):
+        """Fast partial update: visually mark a single rect as trashed without full re-render."""
+        if path not in self.canvas_items:
+            print(f'  _mark_rect_as_trashed: no canvas items for path "{path}"')
+            return False
+
+        items = self.canvas_items[path]
+        self.canv.itemconfig(items['rect_id'], fill=trashed_color[0])
+        self.canv.itemconfig(items['highlight_id'], fill=trashed_color[1])
+        self.canv.itemconfig(items['shadow_id'], fill=trashed_color[2])
+        self.canv.itemconfig(items['text_id'], fill=trashed_text_color)
+        return True
+
+    def trash_path(self, ev):
+        """Move file/folder to system trash and visually mark as trashed."""
+        rect = self._find_rect(ev.x, ev.y)
+        path = rect['path']
+
+        if not send2trash_present:
+            print('  trash_path: dependency `send2trash` not available')
+            print('  install with: pip install send2trash')
+            return
+
+        if path in self.trashed_paths:
+            print(f'  trash_path: "{path}" already trashed')
+            return
+
+        try:
+            print(f'  trash_path: moving to trash: "{path}"')
+            send2trash(path)
+
+            # Use absolute path for logging
+            abs_path = os.path.abspath(path) if path.startswith("./") else path
+
+            # Mark as trashed and update visuals (use original path to match rects)
+            self.trashed_paths.add(path)
+
+            # Also mark all children as trashed (if it was a directory)
+            for r in self.rects:
+                if r['path'].startswith(path + '/') or r['path'] == path:
+                    self.trashed_paths.add(r['path'])
+                    self._mark_rect_as_trashed(r['path'])
+
+            # Log to file
+            trash_log = self.config["trash-log-file"]
+            with open(trash_log, 'a') as f:
+                timestamp = datetime.datetime.now().isoformat()
+                f.write(f'{timestamp} {abs_path}\n')
+
+        except Exception as e:
+            print(f'  trash_path: error moving to trash: {e}')
 
 def init_app(scan_func, subdivide_func, config, title, width=None, height=None):
     """

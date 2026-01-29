@@ -1,0 +1,4 @@
+pyperclip
+python-magic
+send2trash
+tkinter

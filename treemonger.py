@@ -33,6 +33,9 @@ from ipdb import iex
 #   - make clipping better
 #   - scale text to fill rectangle more, so bigger files have bigger text
 # - size rectangles by text linecount
+# - "restore" or "undo" action for moving to trash
+# - show hover info in status bar
+# - highlight specific filetype, file extension
 
 # make --exclude-dirs work with --file (need to filter before render, rather than during scan)
 
@@ -40,8 +43,7 @@ from ipdb import iex
 # - scan filesystem and create JSON file with full treemap definition
 #   - more or less the same algorithm as before
 # - start local server and open html page that handles the interface (very simple)
-# - html page loads json file from local server
-#   - this is new to me, but very similar to mike bostock d3.js examples
+# - html page loads json file from local server (e.g. bostock examples)
 
 # color options
 # 1. depth -> color
@@ -140,6 +142,11 @@ def main(args):
     #     except Exception as exc:
     #         print(exc)
 
+    config["trash-log-file"] = get_trashlog_location(flags, realroot, HOST, NOW)
+    trash_path = os.path.dirname(config["trash-log-file"])
+    os.makedirs(trash_path, exist_ok=True)
+
+
     title = os.path.realpath(root)
     init_app(scan_func, compute_rectangles, config, title=title)
 
@@ -163,6 +170,24 @@ def get_archive_location(flags, rootpath, host, timestamp):
         archive_basename,
     )
     return archive_filename
+
+def get_trashlog_location(flags, rootpath, host, timestamp):
+    # TODO consolidate this with get_archive_location
+    if rootpath == '/':
+        # prevent clobber
+        rootpath = 'root'
+    rootpath_slug = rootpath[1:].replace('/', '-')
+    pattern = flags.get('trash-log-pattern', '')
+    if pattern:
+        trashlog_file = pattern
+        trashlog_file = trashlog_file.replace('%host', HOST)
+        trashlog_file = trashlog_file.replace('%root', rootpath_slug)
+        trashlog_file = trashlog_file.replace('%timestamp', NOW)
+        trashlog_file = os.path.expanduser(trashlog_file)
+    else:
+        return ''
+
+    return trashlog_file
 
 def get_total_children(t):
     if t.children:

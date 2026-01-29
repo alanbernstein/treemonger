@@ -138,9 +138,10 @@ def get_directory_tree(path,
         # directory
         if path.startswith('/proc'):
             import ipdb; ipdb.set_trace()
-        if base in exclude_dirs:
-            t.details['skip'] = 'exclude_dir'
-            return t
+        for d in exclude_dirs:
+            if realpath.startswith(d):
+                t.details['skip'] = 'exclude_dir'
+                return t
         try:
             files = os.listdir(path) # TODO: use this - http://benhoyt.com/writings/scandir/
         except Exception as exc:
