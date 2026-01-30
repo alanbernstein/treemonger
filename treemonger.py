@@ -21,6 +21,7 @@ import pathlib
 import socket
 import sys
 
+from logger import logger, set_verbosity
 from utils import format_bytes
 from scan import get_directory_tree, print_directory_tree, tree_to_dict, dict_to_tree
 from subdivide import compute_rectangles
@@ -33,9 +34,12 @@ from ipdb import iex
 #   - make clipping better
 #   - scale text to fill rectangle more, so bigger files have bigger text
 # - size rectangles by text linecount
-# - "restore" or "undo" action for moving to trash
+# - "restore this file" after moving to trash
+# - undo move-to-trash actions
 # - show hover info in status bar
 # - highlight specific filetype, file extension
+# - use modern logging system, with colored loglevels
+# - move UI hints to the UI instead of the terminal logs
 
 # make --exclude-dirs work with --file (need to filter before render, rather than during scan)
 
@@ -66,7 +70,7 @@ def main(args):
     config_file_flags = config['flags']
 
     root, cli_flags = parse_args(args)
-    print(cli_flags)
+    logger.info(f"cli flags: {cli_flags}")
     flags = config_file_flags
 
     # update list values by combining rather than replacing
@@ -78,9 +82,14 @@ def main(args):
         else:
             flags[k] = cli_flags[k]
 
-    print('flags:')
-    for k, v in flags.items():
-        print('  %s: %s' % (k, v))
+    logger.info(f"full flags: {flags}")
+    flags_str = '\n'.join([f'  {k}: {v}' for k, v in flags.items()])
+
+    set_verbosity(cli_flags.get("verbosity", 0))
+
+    logger.debug(f"full_flags:\n{flags_str}")
+    # logger.debug(f"full flags: %s" % json.dumps(flags, indent=2))
+
 
     if 'file' in flags:
         
@@ -89,7 +98,7 @@ def main(args):
                 data = json.load(f)
             root = data['root']
             t = dict_to_tree(data['tree'])
-            print('loaded scan from file')
+            logger.info(f'loaded scan from file "{flags['file']}"')
             save_to_archive = False
             return t
     else:
@@ -105,7 +114,7 @@ def main(args):
             t1 = dt.now()
 
             delta_t = (t1 - t0).seconds + (t1 - t0).microseconds/1e6
-            print('%f sec to scan %s / %s files' %
+            logger.info('%f sec to scan %s / %s files' %
                 (delta_t, format_bytes(t.size), get_total_children(t)))
             return t
 
@@ -119,10 +128,10 @@ def main(args):
         ts_dt = datetime.datetime.fromtimestamp(ts)
         ts_str = ts_dt.strftime('%Y-%m-%d %H:%M:%S')
 
-        print('using latest recorded file (%s): %s' % (ts_str, fname))
+        logger.info('using latest recorded file (%s): %s' % (ts_str, fname))
         flags['file'] = fname
 
-    print('skipping archive during refactor')
+    logger.info('skipping archive during refactor')
     # if not config.flags.get('file', False) and config.flags['save-to-archive']:
     #     data = {
     #         'tree': tree_to_dict(t),
@@ -133,14 +142,14 @@ def main(args):
     #         'scan_duration_seconds': delta_t,
     #     }
 
-    #     print('archiving results to:\n  %s' % archive_filename)
+    #     logger.info('archiving results to:\n  %s' % archive_filename)
     #     try:
     #         if not os.path.exists(archive_path):
     #             os.mkdir(archive_path)
     #         with open(archive_filename, 'w') as f:
     #             json.dump(data, f)
     #     except Exception as exc:
-    #         print(exc)
+    #         logger.error(exc)
 
     config["trash-log-file"] = get_trashlog_location(flags, realroot, HOST, NOW)
     trash_path = os.path.dirname(config["trash-log-file"])
@@ -197,7 +206,7 @@ def get_total_children(t):
 
 
 def parse_config():
-    print('loading config from %s' % config_file_path)
+    logger.info('loading config from %s' % config_file_path)
     with open(config_file_path) as f:
         config = json.load(f)
     return config
@@ -213,7 +222,7 @@ def parse_args(args):
     }
 
     if len(args) == 1:
-        print('using pwd (%s)' % os.path.realpath(root))
+        logger.info('scanning pwd (%s)' % os.path.realpath(root))
         return root, cli_flags
 
     for arg in args[1:]:
@@ -230,17 +239,21 @@ def parse_args(args):
                     cli_flags['file'] = os.path.expanduser(arg.split('=')[1])
                 else:
                     cli_flags['file-latest'] = True
-                    print('set file-latest = true')
+                    logger.debug('set file-latest = true')
             if arg.startswith('--skip-mount') or arg == '-x':
                 if 'false' in arg.lower():
                     cli_flags['skip-mount'] = False
                 else:
                     cli_flags['skip-mount'] = True
+            if arg == '-v':
+                cli_flags['verbosity'] = 1
+            if arg == '-vv':
+                cli_flags['verbosity'] = 2
 
         else:
             root = arg.rstrip('/')
-
-    print(cli_flags)
+    
+    logger.info(f"flags: {cli_flags}")
 
     return root, cli_flags
 

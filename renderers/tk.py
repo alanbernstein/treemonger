@@ -3,6 +3,8 @@ import os
 import shutil
 import sys
 
+from logger import logger
+
 try:
     import pyperclip
     pyperclip_present = True
@@ -80,7 +82,7 @@ class TreemongerApp(object):
         for k, v in cnf.items():
             if k != '+' and '+' in k:
                 k = k.split('+')
-            # print(k, tuple(k), v)
+            # logger.info(f"{k}, {tuple(k)}, {v}"")
             if k in ['Up', 'Down', 'Right', 'Left']:
                 res[(k,)] = v
             else:
@@ -88,27 +90,27 @@ class TreemongerApp(object):
         return res
 
     def _print_usage(self):
-        print('UI usage:')
+        logger.info('UI usage:')
         for mouse_button, action_func_name in sorted(self.action_map_mouse.items()):
-            print('  mouse<%s>: %s' % (mouse_button, action_func_name))
+            logger.info('  mouse<%s>: %s' % (mouse_button, action_func_name))
         for key, action_func_name in sorted(self.action_map_keyboard.items()):
             if 'delete' in action_func_name:
-                print('  "%s": %s (WORK IN PROGRESS, USE AT YOUR OWN RISK!)' % (key, action_func_name))
+                logger.info('  "%s": %s (WORK IN PROGRESS, USE AT YOUR OWN RISK!)' % (key, action_func_name))
             else:
-                print('  "%s": %s' % (key, action_func_name))
+                logger.info('  "%s": %s' % (key, action_func_name))
 
     def _cleanup_context_menu(self):
         if self._context_menu:
             #self._context_menu.grab_release()
             #self.context_menu_is_open = False
-            print('cleaning up context menu')
+            logger.trace('cleaning up context menu')
             return True
         return False
 
     def _render(self, width=None, height=None):
         width = width or self.width
         height = height or self.height
-        print('rendering %s %dx%d' % (self.render_root, width, height))
+        logger.trace('rendering %s %dx%d' % (self.render_root, width, height))
 
         # Clear canvas item tracking (IDs will be recreated)
         self.canvas_items = {}
@@ -122,7 +124,7 @@ class TreemongerApp(object):
         if render_root != '/':
             parts = render_root.split('/')[1:]
             for p in parts:
-                print('getting %s' % p)
+                logger.trace('getting %s' % p)
                 render_tree = render_tree[p]
 
         zoom_depth = len(render_root.split('/')) - 1
@@ -133,7 +135,7 @@ class TreemongerApp(object):
 
     def render_label(self, rect):
         # TODO: variable font size here?
-        print('render_label')
+        logger.trace('render_label')
         x = rect['x']
         y = rect['y']
         dx = rect['dx']
@@ -194,14 +196,14 @@ class TreemongerApp(object):
     def _on_mousewheel(self, ev):
         if self._cleanup_context_menu():
             return
-        print('mousewheel: %s' % ev)
+        logger.trace('mousewheel: %s' % ev)
         rect = self._find_rect(ev.x, ev.y)
-        print('zooming on: "%s"' % (rect['path']))
+        logger.trace('zooming on: "%s"' % (rect['path']))
 
     def _on_resize(self, ev):
         if self._cleanup_context_menu():
             return
-        print('resized: %d %d' % (ev.width, ev.height))
+        logger.trace('resized: %d %d' % (ev.width, ev.height))
         self.width, self.height = ev.width, ev.height
         # self.canv.coords(self.root_rect, 1, 1, ev.width - 2, ev.height - 2)
         self._render()
@@ -219,14 +221,13 @@ class TreemongerApp(object):
         if (s & 0x88):
             modifiers.append('alt')
 
-        print(modifiers, mouse_button)
+        logger.trace(f"{modifiers} {mouse_button}")
         combo = tuple(modifiers + [str(mouse_button)])
-        print(combo)
-        print('mouse<%d> %s' % (mouse_button, combo))
-        self.info(ev)
+        logger.trace(combo)
+        logger.trace('mouse<%d> %s' % (mouse_button, combo))
         action_func_name = self.action_map_mouse.get(combo, '')
         if action_func_name == '':
-            print('  event mouse<%s>: no action defined' % (combo, ))
+            logger.trace('  event mouse<%s>: no action defined' % (combo, ))
             return
         action_func = getattr(self, action_func_name)
         action_func(ev)
@@ -235,7 +236,7 @@ class TreemongerApp(object):
         if self._cleanup_context_menu():
             return
         key = ev.keysym
-        print('keydown: "%s"' % key)
+        logger.trace('keydown: "%s"' % key)
 
     def _on_keyup(self, ev):
         if self._cleanup_context_menu():
@@ -249,17 +250,17 @@ class TreemongerApp(object):
             modifiers.append('ctrl')
         if (s & 0x88):
             modifiers.append('alt')
-        print(modifiers, key)
+        logger.trace(f"{modifiers} {key}")
         key_ = key
         if key_ not in ['Up', 'Down', 'Left', 'Right']:
             key_ = key_.lower()
 
         combo = tuple(modifiers + [key_])
-        print(combo)
-        print('keyup: "%s" (%s)' % (key, combo))
+        logger.trace(combo)
+        logger.trace('keyup: "%s" (%s)' % (key, combo))
         action_func_name = self.action_map_keyboard.get(combo, '')
         if action_func_name == '':
-            print('  event "%s": no action defined' % (combo, ))
+            logger.trace('  event "%s": no action defined' % (combo, ))
             return
         action_func = getattr(self, action_func_name)
         action_func(ev)
@@ -293,14 +294,14 @@ class TreemongerApp(object):
         sys.exit(0)
 
     def info(self, ev):
-        print('  (%d, %d), (%d, %d)' %
+        logger.info('  (%d, %d), (%d, %d)' %
               (ev.x, ev.y, ev.x_root, ev.y_root))
         rect = self._find_rect(ev.x, ev.y)
-        print('  %s (%s)' % (rect['path'], rect['bytes']))
+        logger.trace('  %s (%s)' % (rect['path'], rect['bytes']))
 
     def refresh(self, ev):
         self.tree = self.scan_func()
-        print('  refresh')
+        logger.trace('  refresh')
         self._render()
 
     def zoom_top(self, ev):
@@ -328,7 +329,7 @@ class TreemongerApp(object):
         self._render()
 
     def cycle_mode(self, ev):
-        print('  cycle_mode: not yet implemented')
+        logger.info('  cycle_mode: not yet implemented')
         # 0. total size
         # 1. total descendants
 
@@ -337,13 +338,14 @@ class TreemongerApp(object):
         rect = self._find_rect(ev.x, ev.y)
         if pyperclip_present:
             pyperclip.copy(rect['path'])
-            print('  copied to clipboard: "%s"' % (rect['path']))
+            logger.info('  copied to clipboard: "%s"' % (rect['path']))
         else:
-            print('  copy_path: dependency `pyperclip` not available')
+            logger.error('  copy_path: dependency `pyperclip` not available')
+            logger.error('  install with: pip install pyperclip')
 
     def open_file(self, ev):
         rect = self._find_rect(ev.x, ev.y)
-        print('  open file: "%s"' % (rect['path']))
+        logger.info('  open file: "%s"' % (rect['path']))
         open_file(rect['path'])
 
     def open_location(self, ev):
@@ -352,7 +354,7 @@ class TreemongerApp(object):
             location = rect['path']
         else:
             location = os.path.dirname(rect['path'])
-        print('  open location: "%s"' % location)
+        logger.info('  open location: "%s"' % location)
         open_file(location)
 
     def add_to_queue(self, ev, action):
@@ -363,14 +365,14 @@ class TreemongerApp(object):
         })
 
     def print_queue(self, ev):
-        print('action queue:')
+        logger.info('action queue:')
         for a in self.queue:
-            print(f"  {a['action']}: {a['path']}")
+            logger.info(f"  {a['action']}: {a['path']}")
 
     def execute_queue(self, ev):
         for a in self.queue:
             if a["action"] == "delete":
-                print(f"rm \"{a['path']}\"")
+                logger.info(f"rm \"{a['path']}\"")
                 #os.remove(a["path"])
 
     def clear_queue(self, ev):
@@ -380,7 +382,7 @@ class TreemongerApp(object):
         rect = self._find_rect(ev.x, ev.y)
         SAFE_MODE = True
         if SAFE_MODE:
-            print('  delete_tree: not available with SAFE_MODE = True')
+            logger.info('  delete_tree: not available with SAFE_MODE = True')
             return
 
         if rect['type'] == 'directory':
@@ -400,12 +402,12 @@ class TreemongerApp(object):
 
         self.refresh(ev)
 
-        print('  delete_tree: %s' % rect['path'])
+        logger.info('  delete_tree: %s' % rect['path'])
 
     def _mark_rect_as_trashed(self, path):
         """Fast partial update: visually mark a single rect as trashed without full re-render."""
         if path not in self.canvas_items:
-            print(f'  _mark_rect_as_trashed: no canvas items for path "{path}"')
+            logger.warning(f'  _mark_rect_as_trashed: no canvas items for path "{path}"')
             return False
 
         items = self.canvas_items[path]
@@ -421,38 +423,42 @@ class TreemongerApp(object):
         path = rect['path']
 
         if not send2trash_present:
-            print('  trash_path: dependency `send2trash` not available')
-            print('  install with: pip install send2trash')
+            logger.error('  trash_path: dependency `send2trash` not available')
+            logger.error('  install with: pip install send2trash')
             return
 
         if path in self.trashed_paths:
-            print(f'  trash_path: "{path}" already trashed')
+            logger.info(f'  trash_path: "{path}" already trashed')
             return
 
         try:
-            print(f'  trash_path: moving to trash: "{path}"')
+            logger.info(f'  trash_path: moving to trash: "{path}"')
             send2trash(path)
+            logger.trace(f'  trash_path: sent')
 
             # Use absolute path for logging
             abs_path = os.path.abspath(path) if path.startswith("./") else path
 
             # Mark as trashed and update visuals (use original path to match rects)
             self.trashed_paths.add(path)
+            logger.trace(f'  trash_path: marked')
 
             # Also mark all children as trashed (if it was a directory)
             for r in self.rects:
                 if r['path'].startswith(path + '/') or r['path'] == path:
                     self.trashed_paths.add(r['path'])
                     self._mark_rect_as_trashed(r['path'])
+            logger.trace(f'  trash_path: marked children')
 
             # Log to file
             trash_log = self.config["trash-log-file"]
             with open(trash_log, 'a') as f:
                 timestamp = datetime.datetime.now().isoformat()
                 f.write(f'{timestamp} {abs_path}\n')
+            logger.trace(f'  trash_path: logged to {trash_log}')
 
         except Exception as e:
-            print(f'  trash_path: error moving to trash: {e}')
+            logger.error(f'  trash_path: error moving to trash: {e}')
 
 def init_app(scan_func, subdivide_func, config, title, width=None, height=None):
     """

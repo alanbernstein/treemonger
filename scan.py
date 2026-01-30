@@ -1,11 +1,14 @@
 import os
+
+from logger import logger
+
 try:
     import magic
     _use_magic = True
 except:
-    print('magic not available, try:')
-    print('  `brew install libmagic` and `pip3 install python-magic` (mac)')
-    print('  `sudo apt-get install libmagic1` and `pip3 install python-magic` (linux)')
+    logger.info('magic not available, try:')
+    logger.info('  `brew install libmagic` and `pip3 install python-magic` (mac)')
+    logger.info('  `sudo apt-get install libmagic1` and `pip3 install python-magic` (linux)')
     _use_magic = False
 
 from utils import format_bytes
@@ -25,7 +28,7 @@ class TreeNode(object):
             if os.path.isdir(self.path.encode('utf8')):
                 name += os.sep
         except UnicodeDecodeError as exc:
-            print(exc)
+            logger.error(exc)
             import ipdb
             ipdb.set_trace()
 
@@ -50,25 +53,25 @@ class TreeNode(object):
         for c in self.children:
             if key == c.name or key + '/' == c.name:
                 return c
-        print('failed to getitem: %s (%s)' % (key, self))
+        logger.error('failed to getitem: %s (%s)' % (key, self))
         #print([c.name for c in self.children])
         return None
     
     def delete_child(self, key):
-        print('deleting child by key: %s' % key)
+        logger.debug('deleting child by key: %s' % key)
         parts = key.split('/')
-        print('parts = %s' % parts)
+        logger.debug('parts = %s' % parts)
         if len(parts) == 1:
             for n, c in enumerate(self.children):
                 if key == c.name or key + '/' == c.name:
-                    print(self.children)
+                    logger.trace(self.children)
                     del self.children[n]
-                    print(self.children)
+                    logger.trace(self.children)
                     break
         else:
-            print(self.children)
-            print(parts[0])
-            print(self[parts[0]])
+            logger.debug(self.children)
+            logger.debug(parts[0])
+            logger.debug(self[parts[0]])
             self[parts[0]].delete_child('/'.join(parts[1:]))
 
     def __repr__(self):
@@ -112,7 +115,7 @@ def get_directory_tree(path,
         realpath = os.path.realpath(path)
     except Exception as exc:
         t.details['skip'] = str(exc)
-        print('skipping %s' % (exc))
+        logger.info('skipping %s' % (exc))
         return t
     base = os.path.basename(path)
     size = 0
@@ -124,13 +127,13 @@ def get_directory_tree(path,
 
     if realpath == '/System/Volumes/Data':
         # hardcoding this because I don't know how to detect it
-        print('skip macOS data volume secret link %s' % path)
+        logger.debug('skip macOS data volume secret link %s' % path)
         t.details['skip'] = 'volume'
         return t
 
     if skip_mount and not (realpath == '/') and os.path.ismount(realpath):
         # different filesystem, probably don't want to scan
-        print('skip mount %s' % path)
+        logger.info('skip mount %s' % path)
         t.details['skip'] = 'mount'
         return t
 
@@ -139,7 +142,9 @@ def get_directory_tree(path,
         if path.startswith('/proc'):
             import ipdb; ipdb.set_trace()
         for d in exclude_dirs:
+            # logger.debug(f'exclude-dir: "{d}"')
             if realpath.startswith(d):
+                # logger.debug(f'  skip "{realpath}"')
                 t.details['skip'] = 'exclude_dir'
                 return t
         try:
@@ -157,7 +162,7 @@ def get_directory_tree(path,
                 # [Errno 13] Permission denied: './System/Volumes/Data/private/var/install'
                 pass
             else:
-                print('skipping %s' % (exc))
+                logger.info('skipping %s' % (exc))
             return t
 
         for file in files:

@@ -7,7 +7,8 @@
         "archive-base-path": "~/treemonger",
         "archive-name-pattern": "%host/%root-%timestamp",
         "trash-log-pattern": "~/treemonger/%host-trashed/%timestamp.txt",
-        "skip-mount": false
+        "skip-mount": false,
+        "verbosity": 0
     },
     "color_cycle": ["#ff7f7f", "#ffbf7f", "#ffff00", "#7fff7f", "#7fffff", "#bfbfff", "#bfbfbf", "#ff7fff"],
     "mouse": {
