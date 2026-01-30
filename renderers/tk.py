@@ -101,8 +101,8 @@ class TreemongerApp(object):
 
     def _cleanup_context_menu(self):
         if self._context_menu:
-            #self._context_menu.grab_release()
-            #self.context_menu_is_open = False
+            self._context_menu.unpost()
+            self._context_menu = None
             logger.trace('cleaning up context menu')
             return True
         return False
@@ -283,12 +283,14 @@ class TreemongerApp(object):
         m.add_command(label="print queue", underline=0, command=lambda: self.print_queue(ev))
         m.add_command(label="execute queue", underline=1, command=lambda: self.execute_queue(ev))
         #m.add_command(label="delete", underline=0, command=lambda: self.delete_file(ev))
-        try:
-            m.tk_popup(ev.x_root, ev.y_root)
-            # self._context_menu = m
-            # self._context_menu_is_open = True
-        finally:
-            m.grab_release()
+        self._context_menu = m
+
+        def on_menu_close():
+            self._context_menu = None
+
+        m.bind('<Unmap>', lambda e: on_menu_close())
+        m.bind('<FocusOut>', lambda e: self._cleanup_context_menu())
+        m.tk_popup(ev.x_root, ev.y_root)
 
     def quit(self, ev):
         sys.exit(0)
