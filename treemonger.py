@@ -151,10 +151,11 @@ def main(args):
     #     except Exception as exc:
     #         logger.error(exc)
 
-    config["trash-log-file"] = get_trashlog_location(flags, realroot, HOST, NOW)
-    trash_path = os.path.dirname(config["trash-log-file"])
-    os.makedirs(trash_path, exist_ok=True)
-
+    trash_log_pattern = flags.get('trash-log-pattern', None)
+    if trash_log_pattern:
+        config["trash-log-file"] = get_trashlog_location(trash_log_pattern, realroot, HOST, NOW)
+        trash_path = os.path.dirname(config["trash-log-file"])
+        os.makedirs(trash_path, exist_ok=True)
 
     title = os.path.realpath(root)
     init_app(scan_func, compute_rectangles, config, title=title)
@@ -180,13 +181,12 @@ def get_archive_location(flags, rootpath, host, timestamp):
     )
     return archive_filename
 
-def get_trashlog_location(flags, rootpath, host, timestamp):
+def get_trashlog_location(pattern, rootpath, host, timestamp):
     # TODO consolidate this with get_archive_location
     if rootpath == '/':
         # prevent clobber
         rootpath = 'root'
     rootpath_slug = rootpath[1:].replace('/', '-')
-    pattern = flags.get('trash-log-pattern', '')
     if pattern:
         trashlog_file = pattern
         trashlog_file = trashlog_file.replace('%host', HOST)

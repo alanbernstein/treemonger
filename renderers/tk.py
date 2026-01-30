@@ -454,10 +454,13 @@ class TreemongerApp(object):
 
             # Log to file
             trash_log = self.config["trash-log-file"]
-            with open(trash_log, 'a') as f:
-                timestamp = datetime.datetime.now().isoformat()
-                f.write(f'{timestamp} {abs_path}\n')
-            logger.trace(f'  trash_path: logged to {trash_log}')
+            if trash_log:
+                with open(trash_log, 'a') as f:
+                    timestamp = datetime.datetime.now().isoformat()
+                    f.write(f'{timestamp} {abs_path}\n')
+                logger.trace(f'  trash_path: logged to {trash_log}')
+            else:
+                logger.warning(f'not logging trashed file path. set flags:trash-log-pattern in config file to log.')
 
         except Exception as e:
             logger.error(f'  trash_path: error moving to trash: {e}')
