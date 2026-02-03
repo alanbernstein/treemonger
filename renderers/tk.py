@@ -20,7 +20,7 @@ except:
 import tkinter as tk
 from PIL import Image, ImageTk
 
-from utils import shorten, open_file
+from utils import shorten, open_file, format_combo
 from .colormap import colormap, trashed_color, trashed_text_color
 
 # TODO: maybe the compute_rectangles function should add rect positions to the tree struct directly
@@ -39,6 +39,8 @@ class TreemongerApp(object):
         # Store canvas item IDs for each rect path for fast partial updates
         # path -> {'rect_id': id, 'highlight_id': id, 'shadow_id': id, 'text_id': id}
         self.canvas_items = {}
+        # Track last hovered rect for keyboard actions when mouse isn't over canvas
+        self._last_hovered_rect = None
 
         self.scan_func = scan_func
         self.tree = self.scan_func()
@@ -61,6 +63,7 @@ class TreemongerApp(object):
         master.title(title)
 
         self._context_menu = None
+        self._help_window = None
         self._resize_job = None
 
         # Check config for console
@@ -97,7 +100,8 @@ class TreemongerApp(object):
         self.canv.bind("<Motion>", self._on_hover)
         self.canv.bind_all("<MouseWheel>", self._on_mousewheel)
 
-        self._print_usage()
+        # self._print_usage()
+        self._print_help_shortcut()
 
     def _setup_status_bar(self):
         """Status bar: info on left, filter on right."""
@@ -174,9 +178,15 @@ class TreemongerApp(object):
             logger.info('  mouse<%s>: %s' % (mouse_button, action_func_name))
         for key, action_func_name in sorted(self.action_map_keyboard.items()):
             if 'delete' in action_func_name:
-                logger.info('  "%s": %s (WORK IN PROGRESS, USE AT YOUR OWN RISK!)' % (key, action_func_name))
+                logger.info('  %s: %s (WORK IN PROGRESS, USE AT YOUR OWN RISK!)' % (format_combo(key), action_func_name))
             else:
-                logger.info('  "%s": %s' % (key, action_func_name))
+                logger.info('  %s: %s' % (format_combo(key), action_func_name))
+                
+    def _print_help_shortcut(self):
+        logger.trace('UI help')
+        for key, action_func_name in sorted(self.action_map_keyboard.items()):
+            if 'help' in action_func_name:
+                logger.info('Press %s for "%s"' % (format_combo(key), action_func_name))
 
     def _cleanup_context_menu(self):
         if self._context_menu:
@@ -265,19 +275,23 @@ class TreemongerApp(object):
             'text_id': text_id,
         }
 
-    def _find_rect(self, x, y):
+    def _find_rect(self, x, y, use_fallback=True):
         # TODO: it would be really nice if the rectangles and the tree nodes
         # were the same objects, so i could just traverse the tree right here...
         for rect in self.rects[::-1]:
             if rect['x'] <= x <= rect['x'] + rect['dx'] and rect['y'] <= y <= rect['y'] + rect['dy']:
                 return rect
+        # Fallback to last hovered rect (useful for keyboard actions from other windows)
+        if use_fallback:
+            return self._last_hovered_rect
 
     def _on_mousewheel(self, ev):
         if self._cleanup_context_menu():
             return
         logger.trace('mousewheel: %s' % ev)
         rect = self._find_rect(ev.x, ev.y)
-        logger.trace('zooming on: "%s"' % (rect['path']))
+        if rect:
+            logger.trace('zooming on: "%s"' % (rect['path']))
 
     def _on_resize(self, ev):
         if self._cleanup_context_menu():
@@ -297,9 +311,9 @@ class TreemongerApp(object):
         self._render()
 
     def _on_hover(self, ev):
-        rect = self._find_rect(ev.x, ev.y)
+        rect = self._find_rect(ev.x, ev.y, use_fallback=False)
         if rect:
-            #size = format_bytes(rect['bytes'])
+            self._last_hovered_rect = rect
             self.set_status(f"{rect['path']}  ({rect['bytes']})")
         else:
             self.set_status("Ready")
@@ -339,6 +353,7 @@ class TreemongerApp(object):
             return
         key = ev.keysym
         s = ev.state
+        logger.trace(f"keyup: keysym={key} state=0x{s:x}")
         modifiers = []
         if (s & 0x1):
             modifiers.append('shift')
@@ -363,6 +378,8 @@ class TreemongerApp(object):
 
     def context_menu(self, ev):
         rect = self._find_rect(ev.x, ev.y)
+        if not rect:
+            return
         # TODO: generalize
         # TODO: may want to init menu once and reconfigure per event
         m = tk.Menu(self.master, tearoff = 0)
@@ -391,11 +408,16 @@ class TreemongerApp(object):
     def quit(self, ev):
         sys.exit(0)
 
+    def modifier_example(self, ev):
+        logger.trace("forwarding example event")
+        self.info(ev)
+
     def info(self, ev):
         logger.info('  (%d, %d), (%d, %d)' %
               (ev.x, ev.y, ev.x_root, ev.y_root))
         rect = self._find_rect(ev.x, ev.y)
-        logger.trace('  %s (%s)' % (rect['path'], rect['bytes']))
+        if rect:
+            logger.trace('  %s (%s)' % (rect['path'], rect['bytes']))
 
     def refresh(self, ev):
         self.tree = self.scan_func()
@@ -414,9 +436,11 @@ class TreemongerApp(object):
 
     def zoom_in(self, ev):
         # append one directory level to zoom state
+        rect = self._find_rect(ev.x, ev.y)
+        if not rect:
+            return
         p1 = self.render_root
         parts1 = p1.split('/')
-        rect = self._find_rect(ev.x, ev.y)
         p2 = rect['path'].lstrip(self.scan_root)
         parts2 = p2.split('/')
         if len(parts2) > len(parts1):
@@ -434,6 +458,8 @@ class TreemongerApp(object):
     def copy_path(self, ev):
         # https://unix.stackexchange.com/questions/139191/whats-the-difference-between-primary-selection-and-clipboard-buffer
         rect = self._find_rect(ev.x, ev.y)
+        if not rect:
+            return
         if pyperclip_present:
             pyperclip.copy(rect['path'])
             logger.info('  copied to clipboard: "%s"' % (rect['path']))
@@ -443,11 +469,15 @@ class TreemongerApp(object):
 
     def open_file(self, ev):
         rect = self._find_rect(ev.x, ev.y)
+        if not rect:
+            return
         logger.info('  open file: "%s"' % (rect['path']))
         open_file(rect['path'])
 
     def open_location(self, ev):
         rect = self._find_rect(ev.x, ev.y)
+        if not rect:
+            return
         if rect['type'] == 'directory':
             location = rect['path']
         else:
@@ -457,6 +487,8 @@ class TreemongerApp(object):
 
     def add_to_queue(self, ev, action):
         rect = self._find_rect(ev.x, ev.y)
+        if not rect:
+            return
         self.queue.append({
             "action": action,
             "path": rect["path"],
@@ -478,6 +510,8 @@ class TreemongerApp(object):
 
     def delete_tree(self, ev):
         rect = self._find_rect(ev.x, ev.y)
+        if not rect:
+            return
         SAFE_MODE = True
         if SAFE_MODE:
             logger.info('  delete_tree: not available with SAFE_MODE = True')
@@ -518,6 +552,8 @@ class TreemongerApp(object):
     def trash_path(self, ev):
         """Move file/folder to system trash and visually mark as trashed."""
         rect = self._find_rect(ev.x, ev.y)
+        if not rect:
+            return
         path = rect['path']
 
         if not send2trash_present:
@@ -560,6 +596,99 @@ class TreemongerApp(object):
 
         except Exception as e:
             logger.error(f'  trash_path: error moving to trash: {e}')
+
+    def show_help(self, ev):
+        """Show a popup window with all keyboard and mouse shortcuts."""
+        # Toggle: close if already open
+        if self._help_window is not None:
+            try:
+                self._help_window.destroy()
+            except:
+                pass
+            self._help_window = None
+            return
+
+        # Create help window
+        help_win = tk.Toplevel(self.master)
+        help_win.title("UI Actions")
+        help_win.transient(self.master)  # Stay on top of main window
+
+        # Position to the right of the main window
+        main_x = self.master.winfo_x()
+        main_y = self.master.winfo_y()
+        main_width = self.master.winfo_width()
+        help_win.geometry(f"400x650+{main_x + main_width + 10}+{main_y}")
+
+        self._help_window = help_win
+
+        def on_close():
+            self._help_window = None
+            help_win.destroy()
+
+        help_win.protocol("WM_DELETE_WINDOW", on_close)
+        help_win.bind('<Escape>', lambda e: on_close())
+
+        # Forward keyboard events to main window handlers
+        help_win.bind("<KeyPress>", self._on_keydown)
+        help_win.bind("<KeyRelease>", self._on_keyup)
+
+        # Create scrollable frame
+        canvas = tk.Canvas(help_win, borderwidth=0)
+        # scrollbar = tk.Scrollbar(help_win, orient="vertical", command=canvas.yview)
+        content_frame = tk.Frame(canvas)
+
+        # canvas.configure(yscrollcommand=scrollbar.set)
+        # scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        canvas.create_window((0, 0), window=content_frame, anchor="nw")
+
+        def on_frame_configure(event):
+            canvas.configure(scrollregion=canvas.bbox("all"))
+        content_frame.bind("<Configure>", on_frame_configure)
+
+        # Style
+        header_font = ("Helvetica", 11, "bold")
+        key_font = ("Courier", 10)
+        action_font = ("Helvetica", 10)
+
+        # Keyboard shortcuts section
+        tk.Label(content_frame, text="Keyboard", font=header_font).pack(anchor="w", padx=10, pady=(10, 5))
+        tk.Frame(content_frame, height=1, bg="gray").pack(fill=tk.X, padx=10, pady=2)
+
+        for combo, action in sorted(self.action_map_keyboard.items(), key=lambda x: x[1]):
+            row = tk.Frame(content_frame)
+            row.pack(fill=tk.X, padx=10, pady=2)
+            combo_str = format_combo(combo)
+            tk.Label(row, text=combo_str, font=key_font, width=20, anchor="w").pack(side=tk.LEFT)
+            tk.Label(row, text=action, font=action_font, anchor="w").pack(side=tk.LEFT, padx=10)
+
+        # Mouse shortcuts section
+        tk.Label(content_frame, text="Mouse", font=header_font).pack(anchor="w", padx=10, pady=(15, 5))
+        tk.Frame(content_frame, height=1, bg="gray").pack(fill=tk.X, padx=10, pady=2)
+
+        mouse_labels = {
+            '1': 'Left click',
+            '2': 'Middle click',
+            '3': 'Right click',
+            '4': 'Scroll up',
+            '5': 'Scroll down',
+        }
+
+        for combo, action in sorted(self.action_map_mouse.items(), key=lambda x: x[1]):
+            row = tk.Frame(content_frame)
+            row.pack(fill=tk.X, padx=10, pady=2)
+            combo_str = format_combo(combo)
+            # Make mouse buttons more readable
+            parts = list(combo)
+            if len(parts) == 1 and parts[0] in mouse_labels:
+                combo_str = mouse_labels[parts[0]]
+            elif parts[-1] in mouse_labels:
+                combo_str = '+'.join(parts[:-1]) + '+' + mouse_labels[parts[-1]]
+            tk.Label(row, text=combo_str, font=key_font, width=20, anchor="w").pack(side=tk.LEFT)
+            tk.Label(row, text=action, font=action_font, anchor="w").pack(side=tk.LEFT, padx=10)
+
+        # Close hint
+        tk.Label(content_frame, text="Esc to close", font=("Helvetica", 9, "italic"), fg="gray").pack(anchor="w", padx=10, pady=(15, 10))
 
 def init_app(scan_func, subdivide_func, config, title, width=None, height=None):
     """

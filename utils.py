@@ -46,3 +46,9 @@ def shorten(string, dx, text_size):
         string = string[0:newLen - 1]
 
     return string
+
+
+def format_combo(combo):
+    """Format a key combo tuple into a readable string."""
+    parts = list(combo)
+    return '+'.join(parts)
