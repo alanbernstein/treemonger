@@ -1,9 +1,27 @@
 import datetime
+import logging
 import os
 import shutil
 import sys
+import time
 
 from logger import logger
+
+
+class TkTextHandler(logging.Handler):
+    """Logging handler that writes to a Tk Text widget."""
+    def __init__(self, text_widget):
+        super().__init__()
+        self.text_widget = text_widget
+
+    def emit(self, record):
+        msg = self.format(record)
+        # Schedule on main thread (Tk isn't thread-safe)
+        self.text_widget.after(0, self._append, msg)
+
+    def _append(self, msg):
+        self.text_widget.insert('end', msg + '\n')
+        self.text_widget.see('end')
 
 try:
     import pyperclip
@@ -65,6 +83,8 @@ class TreemongerApp(object):
         self._context_menu = None
         self._help_window = None
         self._resize_job = None
+        self._last_zoom_time = 0
+        self._zoom_cooldown = 0.5  # seconds
 
         # Check config for console
         show_console = self.config.get('tk_renderer', {}).get('show_console', False)
@@ -140,6 +160,11 @@ class TreemongerApp(object):
         console_scroll.pack(side=tk.RIGHT, fill=tk.Y)
         self.console_text.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
 
+        # Add logging handler to mirror output to console
+        self._console_handler = TkTextHandler(self.console_text)
+        self._console_handler.setFormatter(logging.Formatter('%(levelname)-8s | %(message)s'))
+        logger.addHandler(self._console_handler)
+
     def _apply_filter(self):
         """Handle filter entry."""
         filter_text = self.filter_entry.get().strip()
@@ -181,7 +206,7 @@ class TreemongerApp(object):
                 logger.info('  %s: %s (WORK IN PROGRESS, USE AT YOUR OWN RISK!)' % (format_combo(key), action_func_name))
             else:
                 logger.info('  %s: %s' % (format_combo(key), action_func_name))
-                
+
     def _print_help_shortcut(self):
         logger.trace('UI help')
         for key, action_func_name in sorted(self.action_map_keyboard.items()):
@@ -197,6 +222,7 @@ class TreemongerApp(object):
         return False
 
     def _render(self, width=None, height=None):
+        t0 = time.time()
         width = width or self.width
         height = height or self.height
         logger.trace('rendering %s %dx%d' % (self.render_root, width, height))
@@ -221,6 +247,9 @@ class TreemongerApp(object):
         self.rects = self.compute_func(render_tree, [0, width], [0, height], self.config['tk_renderer'])
         for rect in self.rects:
             self._render_rect(rect, base_color_depth=zoom_depth)
+
+        t1 = time.time()
+        logger.info(f"{t1-t0:.6} sec to render")
 
     def render_label(self, rect):
         # TODO: variable font size here?
@@ -284,6 +313,15 @@ class TreemongerApp(object):
         # Fallback to last hovered rect (useful for keyboard actions from other windows)
         if use_fallback:
             return self._last_hovered_rect
+
+    def _check_zoom_cooldown(self):
+        """Returns True if zoom should proceed, False if in cooldown."""
+        now = time.time()
+        if now - self._last_zoom_time < self._zoom_cooldown:
+            logger.trace('zoom cooldown, ignoring')
+            return False
+        self._last_zoom_time = now
+        return True
 
     def _on_mousewheel(self, ev):
         if self._cleanup_context_menu():
@@ -418,11 +456,11 @@ class TreemongerApp(object):
         self.info(ev)
 
     def info(self, ev):
-        logger.info('  (%d, %d), (%d, %d)' %
+        logger.debug('  (%d, %d), (%d, %d)' %
               (ev.x, ev.y, ev.x_root, ev.y_root))
         rect = self._find_rect(ev.x, ev.y)
         if rect:
-            logger.trace('  %s (%s)' % (rect['path'], rect['bytes']))
+            logger.info('  %s (%s)' % (rect['path'], rect['bytes']))
 
     def refresh(self, ev):
         self.tree = self.scan_func()
@@ -430,17 +468,34 @@ class TreemongerApp(object):
         self._render()
 
     def zoom_top(self, ev):
+        # zooming can be a slow UI operation, should have at least one info-level log for each zoom action
+        if not self._check_zoom_cooldown():
+            return
         self.render_root = '/'
-        self.refresh(ev)
+        logger.info("zoom top")
+        self._render()
 
     def zoom_out(self, ev):
+        # zooming can be a slow UI operation, should have at least one info-level log for each zoom action
+        if not self._check_zoom_cooldown():
+            return
+        if self.render_root == '/':
+            logger.info(f"not zooming above root node")
+            return
+        old_render_root = self.render_root
         parts = self.render_root.split('/')
-        # TODO don't back up further than possible
         self.render_root = '/'.join(parts[:-1])
-        self.refresh(ev)
+        if self.render_root == '':
+            self.render_root = '/'
+        logger.info(f"zoom out from {old_render_root} to {self.render_root}")
+        self._render()
 
     def zoom_in(self, ev):
         # append one directory level to zoom state
+        # zooming can be a slow UI operation, should have at least one info-level log for each zoom action
+        if not self._check_zoom_cooldown():
+            return
+        old_render_root = self.render_root
         rect = self._find_rect(ev.x, ev.y)
         if not rect:
             return
@@ -451,8 +506,12 @@ class TreemongerApp(object):
         if len(parts2) > len(parts1):
             parts2 = parts2[:len(parts1)+1]  # zoom in one level
         self.render_root = '/'.join(parts2)
+        if self.render_root == old_render_root:
+            logger.info("not zooming below leaf node")
+            return
 
         # then render
+        logger.info(f"zoom in from {old_render_root} to {self.render_root}")
         self._render()
 
     def cycle_mode(self, ev):
@@ -482,11 +541,14 @@ class TreemongerApp(object):
     def open_location(self, ev):
         rect = self._find_rect(ev.x, ev.y)
         if not rect:
+            logger.trace("skip")
             return
         if rect['type'] == 'directory':
             location = rect['path']
+            logger.trace(f"open dir: {location}")
         else:
             location = os.path.dirname(rect['path'])
+            logger.trace(f"open parent: {location}")
         logger.info('  open location: "%s"' % location)
         open_file(location)
 

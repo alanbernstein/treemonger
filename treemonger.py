@@ -38,7 +38,6 @@ from ipdb import iex
 # - undo move-to-trash actions
 # - show hover info in status bar
 # - highlight specific filetype, file extension
-# - use modern logging system, with colored loglevels
 # - move UI hints to the UI instead of the terminal logs
 
 # make --exclude-dirs work with --file (need to filter before render, rather than during scan)

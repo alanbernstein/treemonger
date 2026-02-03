@@ -15,6 +15,8 @@ COLORS = {
 
 class ColoredFormatter(logging.Formatter):
     def format(self, record):
+        # Copy record to avoid mutating shared state (affects other handlers)
+        record = logging.makeLogRecord(record.__dict__)
         color = COLORS.get(record.levelname, '')
         reset = COLORS['RESET']
         record.levelname = f"{color}{record.levelname: <8}{reset}"
