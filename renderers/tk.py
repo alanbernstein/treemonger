@@ -352,6 +352,11 @@ class TreemongerApp(object):
         if self._cleanup_context_menu():
             return
         key = ev.keysym
+        # Ignore modifier key releases
+        if key in ('Alt_L', 'Alt_R', 'Control_L', 'Control_R',
+                   'Shift_L', 'Shift_R', 'Super_L', 'Super_R',
+                   'Meta_L', 'Meta_R', 'Caps_Lock', 'Num_Lock'):
+            return
         s = ev.state
         logger.trace(f"keyup: keysym={key} state=0x{s:x}")
         modifiers = []
