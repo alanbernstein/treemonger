@@ -52,3 +52,31 @@ def format_combo(combo):
     """Format a key combo tuple into a readable string."""
     parts = list(combo)
     return '+'.join(parts)
+
+
+def get_mousebutton_names():
+    if platform.system() == "Windows":
+        return {
+            '1': 'Mouse 1',
+            '2': 'Mouse 2',
+            '3': 'Mouse 3',
+            '4': 'Mouse 4',
+            '5': 'Mouse 5',
+        }
+    elif platform.system() == "Darwin":
+        return {
+            '1': 'Mouse 1',
+            '2': 'Mouse 2',
+            '3': 'Mouse 3',
+            '4': 'Mouse 4',
+            '5': 'Mouse 5',
+        }
+    else:
+        return {
+            '1': 'Left click',
+            '2': 'Middle click',
+            '3': 'Right click',
+            '4': 'Scroll up',
+            '5': 'Scroll down',
+        }
+                

@@ -20,7 +20,7 @@ except:
 import tkinter as tk
 from PIL import Image, ImageTk
 
-from utils import shorten, open_file, format_combo
+from utils import shorten, open_file, format_combo, get_mousebutton_names
 from .colormap import colormap, trashed_color, trashed_text_color
 
 # TODO: maybe the compute_rectangles function should add rect positions to the tree struct directly
@@ -666,13 +666,7 @@ class TreemongerApp(object):
         tk.Label(content_frame, text="Mouse", font=header_font).pack(anchor="w", padx=10, pady=(15, 5))
         tk.Frame(content_frame, height=1, bg="gray").pack(fill=tk.X, padx=10, pady=2)
 
-        mouse_labels = {
-            '1': 'Left click',
-            '2': 'Middle click',
-            '3': 'Right click',
-            '4': 'Scroll up',
-            '5': 'Scroll down',
-        }
+        mouse_labels = get_mousebutton_names()
 
         for combo, action in sorted(self.action_map_mouse.items(), key=lambda x: x[1]):
             row = tk.Frame(content_frame)
