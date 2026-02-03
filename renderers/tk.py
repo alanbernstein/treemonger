@@ -391,10 +391,10 @@ class TreemongerApp(object):
         m.add_command(label="refresh", underline=0, command=lambda: self.refresh(ev))
         m.add_separator()
         m.add_command(label="move to trash", underline=8, command=lambda: self.trash_path(ev))
-        m.add_separator()
-        m.add_command(label="add to delete queue", underline=0, command=lambda: self.add_to_queue(ev, "delete"))
-        m.add_command(label="print queue", underline=0, command=lambda: self.print_queue(ev))
-        m.add_command(label="execute queue", underline=1, command=lambda: self.execute_queue(ev))
+        # m.add_separator()
+        # m.add_command(label="add to delete queue", underline=0, command=lambda: self.add_to_queue(ev, "delete"))
+        # m.add_command(label="print queue", underline=0, command=lambda: self.print_queue(ev))
+        # m.add_command(label="execute queue", underline=1, command=lambda: self.execute_queue(ev))
         #m.add_command(label="delete", underline=0, command=lambda: self.delete_file(ev))
         self._context_menu = m
 

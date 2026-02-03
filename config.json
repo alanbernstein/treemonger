@@ -13,10 +13,9 @@
     "color_cycle": ["#ff7f7f", "#ffbf7f", "#ffff00", "#7fff7f", "#7fffff", "#bfbfff", "#bfbfbf", "#ff7fff"],
     "mouse": {
         "1": "info",
-        "ctrl+1": "info",
+        "ctrl+1": "modifier_example",
         "2": "copy_path",
         "3": "context_menu",
-        "ctrl+3": "delete_tree",
         "4": "zoom_out",
         "5": "zoom_in"
     },
@@ -27,14 +26,14 @@
         "Up": "zoom_out",
         "Down": "zoom_in",
         "z": "zoom_top",
-        "d": "delete_tree",
         "t": "trash_path",
         "c": "copy_path",
         "o": "open_location",
         "i": "info",
-        "ctrl+p": "refresh",
-        "alt+l": "copy_path",
-        "shift+e": "info"
+        "ctrl+p": "modifier_example",
+        "alt+l": "modifier_example",
+        "shift+e": "modifier_example",
+        "h": "show_help"
     },
     "tk_renderer": {
         "text_offset_x": 3,
