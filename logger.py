@@ -34,11 +34,11 @@ logging.addLevelName(GUI_INFO, 'GUI')
 # Add methods to Logger class
 def gui_info(self, message, *args, **kwargs):
     if self.isEnabledFor(GUI_INFO):
-        self._log(GUI_INFO, message, args, **kwargs)
+        self._log(GUI_INFO, message, args, stacklevel=2, **kwargs)
 
 def trace(self, message, *args, **kwargs):
     if self.isEnabledFor(TRACE):
-        self._log(TRACE, message, args, **kwargs)
+        self._log(TRACE, message, args, stacklevel=2, **kwargs)
 
 logging.Logger.gui_info = gui_info
 logging.Logger.trace = trace
