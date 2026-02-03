@@ -48,7 +48,6 @@ class TreemongerApp(object):
         self.render_root = '/'  # walk up and down tree to zoom
 
         self.master = master
-        self.frame = tk.Frame(self.master)
         screen_width = master.winfo_screenwidth()
         screen_height = master.winfo_screenheight()
         width = width or screen_width/2
@@ -62,20 +61,100 @@ class TreemongerApp(object):
         master.title(title)
 
         self._context_menu = None
+        self._resize_job = None
 
-        self.canv = tk.Canvas(master, bg='black')
-        self.canv.pack(expand=True, fill=tk.BOTH)  # ?
-        # canv.grid(row=0, column=0, columnspan=3);
+        # Check config for console
+        show_console = self.config.get('tk_renderer', {}).get('show_console', False)
+
+        # Grid layout: row 0 = content, row 1 = status bar
+        master.grid_rowconfigure(0, weight=1)
+        master.grid_columnconfigure(0, weight=1)
+
+        # Main content frame (holds canvas and optionally console)
+        content_frame = tk.Frame(master)
+        content_frame.grid(row=0, column=0, sticky='nsew')
+        content_frame.grid_rowconfigure(0, weight=1)
+        content_frame.grid_columnconfigure(0, weight=1)
+
+        # Canvas
+        self.canv = tk.Canvas(content_frame, bg='black')
+        self.canv.grid(row=0, column=0, sticky='nsew')
         self.root_rect = self.canv.create_rectangle(0, 0, 0, 0, width=1,
                                                     fill="white", outline='black')
+
+        # Console (if enabled)
+        if show_console:
+            self._setup_console(content_frame)
+
+        # Status bar
+        self._setup_status_bar()
+
+        # Event bindings
         self.master.bind("<KeyPress>", self._on_keydown)
         self.master.bind("<KeyRelease>", self._on_keyup)
         self.canv.bind("<Configure>", self._on_resize)
         self.canv.bind("<Button>", self._on_click)
+        self.canv.bind("<Motion>", self._on_hover)
         self.canv.bind_all("<MouseWheel>", self._on_mousewheel)
-        self.frame.pack()
 
         self._print_usage()
+
+    def _setup_status_bar(self):
+        """Status bar: info on left, filter on right."""
+        self.status_bar = tk.Frame(self.master)
+        self.status_bar.grid(row=1, column=0, sticky='ew')
+
+        # Info label on left
+        self.status_label = tk.Label(self.status_bar, text="Ready", anchor=tk.W)
+        self.status_label.pack(side=tk.LEFT, padx=5)
+
+        # Filter on right
+        filter_frame = tk.Frame(self.status_bar)
+        filter_frame.pack(side=tk.RIGHT, padx=5)
+        tk.Label(filter_frame, text="Filter:").pack(side=tk.LEFT)
+        self.filter_entry = tk.Entry(filter_frame, width=15)
+        self.filter_entry.pack(side=tk.LEFT, padx=2)
+        self.filter_entry.bind('<Return>', lambda e: self._apply_filter())
+
+    def _setup_console(self, parent):
+        """Console panel on the right side."""
+        console_width = 350
+        console_bg = '#1e1e1e'
+        console_fg = '#cccccc'
+
+        self.console_frame = tk.Frame(parent, bg=console_bg, width=console_width)
+        self.console_frame.grid(row=0, column=1, sticky='ns')
+        self.console_frame.grid_propagate(False)
+
+        tk.Label(self.console_frame, text="Console", bg=console_bg, fg=console_fg,
+                 font=('Helvetica', 9, 'bold')).pack(anchor='w', padx=5, pady=(5, 0))
+
+        self.console_text = tk.Text(self.console_frame, wrap=tk.WORD,
+                                    bg=console_bg, fg=console_fg, width=40)
+        console_scroll = tk.Scrollbar(self.console_frame, command=self.console_text.yview)
+        self.console_text.config(yscrollcommand=console_scroll.set)
+        console_scroll.pack(side=tk.RIGHT, fill=tk.Y)
+        self.console_text.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+
+    def _apply_filter(self):
+        """Handle filter entry."""
+        filter_text = self.filter_entry.get().strip()
+        if filter_text:
+            logger.info(f"Filter: {filter_text}")
+            self.set_status(f"Filter: {filter_text}")
+        else:
+            self.set_status("Ready")
+
+    def set_status(self, text):
+        """Update status bar text."""
+        self.status_label.config(text=text)
+
+    def log_to_console(self, text):
+        """Add text to console (if enabled)."""
+        if not hasattr(self, 'console_text'):
+            return
+        self.console_text.insert(tk.END, text + "\n")
+        self.console_text.see(tk.END)
 
     def _parse_keycombos(self, cnf):
         res = {}
@@ -203,10 +282,27 @@ class TreemongerApp(object):
     def _on_resize(self, ev):
         if self._cleanup_context_menu():
             return
-        logger.trace('resized: %d %d' % (ev.width, ev.height))
+        # Skip if size unchanged
+        if ev.width == self.width and ev.height == self.height:
+            return
         self.width, self.height = ev.width, ev.height
-        # self.canv.coords(self.root_rect, 1, 1, ev.width - 2, ev.height - 2)
+        # Debounce: cancel pending redraw and schedule new one
+        if self._resize_job:
+            self.master.after_cancel(self._resize_job)
+        self._resize_job = self.master.after(100, self._do_render)
+
+    def _do_render(self):
+        self._resize_job = None
+        logger.trace('resized: %d %d' % (self.width, self.height))
         self._render()
+
+    def _on_hover(self, ev):
+        rect = self._find_rect(ev.x, ev.y)
+        if rect:
+            #size = format_bytes(rect['bytes'])
+            self.set_status(f"{rect['path']}  ({rect['bytes']})")
+        else:
+            self.set_status("Ready")
 
     def _on_click(self, ev):
         if self._cleanup_context_menu():
