@@ -45,6 +45,8 @@
         "min_box_size": 10,
         "max_filesystem_depth": 16,
         "size_mode": "bytes",
-        "show_console": true
+        "show_console": true,
+        "highlight_color": ["#7f00bf", "#a040df", "#5f008f"],
+        "highlight_text_color": "#ffffff"
     }
 }

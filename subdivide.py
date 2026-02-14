@@ -47,6 +47,7 @@ def compute_rectangles(node, xlim, ylim, params, recurse_level=0, dir_level=0, r
                 'dy': ylim[1] - ylim[0],
                 'depth': dir_level,
                 'bytes': format_bytes(node.size),
+                'size': node.size,
                 'text': txt,
                 'type': node_type,
                 'path': node.path,

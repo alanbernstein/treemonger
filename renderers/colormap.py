@@ -11,6 +11,13 @@ colormap = [
     ["#ff7fff", "#ffbfff", "#bf7fbf"],
 ]
 
-# Distinct trashed/deleted color (brownish-gray, visually distinct from depth gray #bfbfbf)
-trashed_color = ["#ff5b00", "#ff0000", "#ff0000"]
-trashed_text_color = "#606060"  # Low contrast text for trashed items
+special_colors = {
+    'trashed': {
+        'color': ["#ff5b00", "#ff0000", "#ff0000"],
+        'text_color': "#606060",
+    },
+    'highlight': {
+        'color': ["#7f00bf", "#a040df", "#5f008f"],
+        'text_color': "#ffffff",
+    },
+}

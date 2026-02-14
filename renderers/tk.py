@@ -1,5 +1,6 @@
 import datetime
 import logging
+import mimetypes
 import os
 import shutil
 import sys
@@ -38,8 +39,8 @@ except:
 import tkinter as tk
 from PIL import Image, ImageTk
 
-from utils import shorten, open_file, format_combo, get_mousebutton_names
-from .colormap import colormap, trashed_color, trashed_text_color
+from utils import shorten, open_file, format_combo, get_mousebutton_names, format_bytes
+from .colormap import colormap, special_colors
 
 # TODO: maybe the compute_rectangles function should add rect positions to the tree struct directly
 # then the mouse click hit test can retrieve the full struct directly
@@ -54,11 +55,22 @@ class TreemongerApp(object):
 
         # Track trashed items for visual indication (path -> True)
         self.trashed_paths = set()
+        # Track highlighted items from filter
+        self.highlighted_paths = set()
+        self._base_color_depth = 0
+        self._filter_log_job = None
         # Store canvas item IDs for each rect path for fast partial updates
         # path -> {'rect_id': id, 'highlight_id': id, 'shadow_id': id, 'text_id': id}
         self.canvas_items = {}
         # Track last hovered rect for keyboard actions when mouse isn't over canvas
         self._last_hovered_rect = None
+
+        # Load special colors from config with fallback to colormap defaults
+        tk_conf = config.get('tk_renderer', {})
+        self._trashed_color = tk_conf.get('trashed_color', special_colors['trashed']['color'])
+        self._trashed_text_color = tk_conf.get('trashed_text_color', special_colors['trashed']['text_color'])
+        self._highlight_color = tk_conf.get('highlight_color', special_colors['highlight']['color'])
+        self._highlight_text_color = tk_conf.get('highlight_text_color', special_colors['highlight']['text_color'])
 
         self.scan_func = scan_func
         self.tree = self.scan_func()
@@ -116,9 +128,12 @@ class TreemongerApp(object):
         self.master.bind("<KeyPress>", self._on_keydown)
         self.master.bind("<KeyRelease>", self._on_keyup)
         self.canv.bind("<Configure>", self._on_resize)
-        self.canv.bind("<Button>", self._on_click)
+        self.canv.bind("<Button>", self._on_canvas_click)
         self.canv.bind("<Motion>", self._on_hover)
         self.canv.bind_all("<MouseWheel>", self._on_mousewheel)
+
+        # Ensure canvas has focus so keyboard shortcuts work (not the filter entry)
+        self.canv.focus_set()
 
         # self._print_usage()
         self._print_help_shortcut()
@@ -138,7 +153,10 @@ class TreemongerApp(object):
         tk.Label(filter_frame, text="Filter:").pack(side=tk.LEFT)
         self.filter_entry = tk.Entry(filter_frame, width=15)
         self.filter_entry.pack(side=tk.LEFT, padx=2)
-        self.filter_entry.bind('<Return>', lambda e: self._apply_filter())
+        self.filter_entry.bind('<KeyRelease>', self._on_filter_change)
+        self.filter_entry.bind('<Tab>', self._on_filter_tab)
+        self.filter_entry.bind('<Return>', lambda e: self._on_filter_change(e))
+        self.filter_entry.bind('<Escape>', self._on_filter_escape)
 
     def _setup_console(self, parent):
         """Console panel on the right side."""
@@ -165,14 +183,185 @@ class TreemongerApp(object):
         self._console_handler.setFormatter(logging.Formatter('%(levelname)-8s | %(message)s'))
         logger.addHandler(self._console_handler)
 
-    def _apply_filter(self):
-        """Handle filter entry."""
+    def _on_filter_change(self, event=None):
+        """Handle filter text changes — auto-apply highlighting."""
         filter_text = self.filter_entry.get().strip()
-        if filter_text:
-            logger.info(f"Filter: {filter_text}")
-            self.set_status(f"Filter: {filter_text}")
-        else:
-            self.set_status("Ready")
+        if not filter_text:
+            self._clear_highlight()
+            return
+
+        matching_paths = set()
+        for rect in self.rects:
+            path = rect['path']
+            is_dir = rect['type'] == 'directory'
+            if filter_text.startswith('.'):
+                # Extension filter (files only)
+                if not is_dir and path.endswith(filter_text):
+                    matching_paths.add(path)
+            elif filter_text.startswith(':'):
+                # MIME category filter (files only)
+                if not is_dir:
+                    category = filter_text[1:].lower()
+                    mime_type, _ = mimetypes.guess_type(path)
+                    if mime_type and mime_type.split('/')[0] == category:
+                        matching_paths.add(path)
+            elif filter_text.endswith('/'):
+                # Trailing slash: match directories only
+                if is_dir:
+                    query = filter_text[:-1].lower()
+                    dirname = os.path.basename(path)
+                    if query in dirname.lower():
+                        matching_paths.add(path)
+            else:
+                # Substring match on name (files and directories)
+                name = os.path.basename(path)
+                if filter_text.lower() in name.lower():
+                    matching_paths.add(path)
+
+        self._apply_highlight(matching_paths)
+
+    def _apply_highlight(self, matching_paths):
+        """Apply highlight to matching paths, restore others."""
+        to_highlight = matching_paths - self.highlighted_paths
+        to_restore = self.highlighted_paths - matching_paths
+
+        for path in to_highlight:
+            if path not in self.trashed_paths:
+                self._mark_rect_as_highlighted(path)
+
+        for path in to_restore:
+            if path not in self.trashed_paths:
+                self._restore_rect_color(path)
+
+        self.highlighted_paths = matching_paths
+        filter_text = self.filter_entry.get().strip()
+
+        # Walk full tree for stats (not just visible rects)
+        total_count, total_bytes = self._count_tree_matches(filter_text)
+        visible_count = len(matching_paths)
+        self.set_status(f"Filter: {filter_text} ({total_count} file{'s' if total_count != 1 else ''}, {format_bytes(total_bytes)})")
+        # Debounce log message so it only fires when the user pauses typing
+        if self._filter_log_job:
+            self.master.after_cancel(self._filter_log_job)
+        self._filter_log_job = self.master.after(400, lambda: logger.info(
+            f"Filter: {filter_text} — {total_count} file{'s' if total_count != 1 else ''}, {format_bytes(total_bytes)} ({visible_count} visible)"))
+
+    def _count_tree_matches(self, filter_text):
+        """Walk the full tree and count files/bytes matching the filter."""
+        count = 0
+        total = 0
+        stack = [self.tree]
+        while stack:
+            node = stack.pop()
+            is_dir = bool(node.children)
+            name = os.path.basename(node.path)
+            matched = False
+            if filter_text.startswith('.'):
+                if not is_dir and node.path.endswith(filter_text):
+                    matched = True
+            elif filter_text.startswith(':'):
+                if not is_dir:
+                    category = filter_text[1:].lower()
+                    mime_type, _ = mimetypes.guess_type(node.path)
+                    if mime_type and mime_type.split('/')[0] == category:
+                        matched = True
+            elif filter_text.endswith('/'):
+                if is_dir:
+                    query = filter_text[:-1].lower()
+                    if query in name.lower():
+                        matched = True
+            else:
+                if filter_text.lower() in name.lower():
+                    matched = True
+            if matched:
+                count += 1
+                total += node.size
+            stack.extend(node.children)
+        return count, total
+
+    def _mark_rect_as_highlighted(self, path):
+        """Fast partial update: visually mark a single rect as highlighted."""
+        if path not in self.canvas_items:
+            return
+        items = self.canvas_items[path]
+        self.canv.itemconfig(items['rect_id'], fill=self._highlight_color[0])
+        self.canv.itemconfig(items['highlight_id'], fill=self._highlight_color[1])
+        self.canv.itemconfig(items['shadow_id'], fill=self._highlight_color[2])
+        self.canv.itemconfig(items['text_id'], fill=self._highlight_text_color)
+
+    def _restore_rect_color(self, path):
+        """Restore a rect to its original depth-based color."""
+        if path in self.trashed_paths:
+            return
+        if path not in self.canvas_items:
+            return
+        # Find the rect to get its depth
+        for rect in self.rects:
+            if rect['path'] == path:
+                d = (rect['depth'] + self._base_color_depth) % len(colormap)
+                cs = colormap[d]
+                items = self.canvas_items[path]
+                self.canv.itemconfig(items['rect_id'], fill=cs[0])
+                self.canv.itemconfig(items['highlight_id'], fill=cs[1])
+                self.canv.itemconfig(items['shadow_id'], fill=cs[2])
+                self.canv.itemconfig(items['text_id'], fill="black")
+                return
+
+    def _clear_highlight(self):
+        """Remove all filter highlighting and restore original colors."""
+        if self.highlighted_paths:
+            logger.info("Filter cleared")
+        for path in self.highlighted_paths:
+            self._restore_rect_color(path)
+        self.highlighted_paths = set()
+        self.set_status("Ready")
+
+    def _on_filter_tab(self, event):
+        """Tab-completion for filter entry."""
+        text = self.filter_entry.get().strip()
+        if not text:
+            return "break"
+
+        completions = []
+        if text.startswith('.'):
+            # Collect unique extensions
+            extensions = set()
+            for rect in self.rects:
+                if rect['type'] == 'file':
+                    _, ext = os.path.splitext(rect['path'])
+                    if ext:
+                        extensions.add(ext)
+            completions = sorted(e for e in extensions if e.startswith(text))
+        elif text.startswith(':'):
+            # Collect MIME categories present in current view
+            categories = set()
+            for rect in self.rects:
+                if rect['type'] == 'file':
+                    mime_type, _ = mimetypes.guess_type(rect['path'])
+                    if mime_type:
+                        categories.add(':' + mime_type.split('/')[0])
+            completions = sorted(c for c in categories if c.startswith(text))
+
+        if len(completions) == 1:
+            self.filter_entry.delete(0, tk.END)
+            self.filter_entry.insert(0, completions[0])
+            self._on_filter_change()
+        elif len(completions) > 1:
+            # Fill to longest common prefix
+            prefix = os.path.commonprefix(completions)
+            if len(prefix) > len(text):
+                self.filter_entry.delete(0, tk.END)
+                self.filter_entry.insert(0, prefix)
+            logger.info(f"Completions: {', '.join(completions)}")
+
+        return "break"
+
+    def _on_filter_escape(self, event):
+        """Clear filter and unfocus."""
+        self.filter_entry.delete(0, tk.END)
+        self._clear_highlight()
+        self.canv.focus_set()
+        return "break"
 
     def set_status(self, text):
         """Update status bar text."""
@@ -243,10 +432,17 @@ class TreemongerApp(object):
                 render_tree = render_tree[p]
 
         zoom_depth = len(render_root.split('/')) - 1
+        self._base_color_depth = zoom_depth
 
         self.rects = self.compute_func(render_tree, [0, width], [0, height], self.config['tk_renderer'])
         for rect in self.rects:
             self._render_rect(rect, base_color_depth=zoom_depth)
+
+        # Re-apply filter highlight if active
+        filter_text = self.filter_entry.get().strip()
+        if filter_text:
+            self.highlighted_paths = set()  # Reset so _on_filter_change reapplies all
+            self._on_filter_change()
 
         t1 = time.time()
         logger.info(f"{t1-t0:.6} sec to render")
@@ -270,11 +466,15 @@ class TreemongerApp(object):
         d = rect['depth']
         d = (d + base_color_depth) % len(colormap)
 
-        # Use trashed colors if this path has been trashed
+        # Use trashed colors if this path has been trashed (trashed takes priority)
         is_trashed = rect['path'] in self.trashed_paths
+        is_highlighted = rect['path'] in self.highlighted_paths
         if is_trashed:
-            cs = trashed_color
-            text_fill = trashed_text_color
+            cs = self._trashed_color
+            text_fill = self._trashed_text_color
+        elif is_highlighted:
+            cs = self._highlight_color
+            text_fill = self._highlight_text_color
         else:
             cs = colormap[d]
             text_fill = "black"
@@ -356,6 +556,11 @@ class TreemongerApp(object):
         else:
             self.set_status("Ready")
 
+    def _on_canvas_click(self, ev):
+        """Handle canvas click: steal focus from filter entry, then dispatch."""
+        self.canv.focus_set()
+        self._on_click(ev)
+
     def _on_click(self, ev):
         if self._cleanup_context_menu():
             return
@@ -381,15 +586,22 @@ class TreemongerApp(object):
         action_func(ev)
 
     def _on_keydown(self, ev):
+        if self.master.focus_get() == self.filter_entry:
+            return
         if self._cleanup_context_menu():
             return
         key = ev.keysym
         logger.trace('keydown: "%s"' % key)
 
     def _on_keyup(self, ev):
+        if self.master.focus_get() == self.filter_entry:
+            return
         if self._cleanup_context_menu():
             return
         key = ev.keysym
+        if key == 'slash':
+            self.filter_entry.focus_set()
+            return
         # Ignore modifier key releases
         if key in ('Alt_L', 'Alt_R', 'Control_L', 'Control_R',
                    'Shift_L', 'Shift_R', 'Super_L', 'Super_R',
@@ -610,10 +822,10 @@ class TreemongerApp(object):
             return False
 
         items = self.canvas_items[path]
-        self.canv.itemconfig(items['rect_id'], fill=trashed_color[0])
-        self.canv.itemconfig(items['highlight_id'], fill=trashed_color[1])
-        self.canv.itemconfig(items['shadow_id'], fill=trashed_color[2])
-        self.canv.itemconfig(items['text_id'], fill=trashed_text_color)
+        self.canv.itemconfig(items['rect_id'], fill=self._trashed_color[0])
+        self.canv.itemconfig(items['highlight_id'], fill=self._trashed_color[1])
+        self.canv.itemconfig(items['shadow_id'], fill=self._trashed_color[2])
+        self.canv.itemconfig(items['text_id'], fill=self._trashed_text_color)
         return True
 
     def trash_path(self, ev):

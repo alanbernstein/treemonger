@@ -27,7 +27,7 @@ from scan import get_directory_tree, print_directory_tree, tree_to_dict, dict_to
 from subdivide import compute_rectangles
 from renderers.tk import init_app
 
-from ipdb import iex
+# from ipdb import iex
 
 # MAJOR TODOs:
 # - text rendering (renderers.tk.TreemongerApp.render_rect()):
@@ -38,7 +38,6 @@ from ipdb import iex
 # - undo move-to-trash actions
 # - show hover info in status bar
 # - highlight specific filetype, file extension
-# - move UI hints to the UI instead of the terminal logs
 
 # make --exclude-dirs work with --file (need to filter before render, rather than during scan)
 
@@ -62,7 +61,7 @@ if not os.path.exists(config_file_path):
 NOW = dt.strftime(dt.now(), '%Y%m%d-%H%M%S')
 HOST = os.getenv('MACHINE', socket.gethostname())
 
-@iex
+#@iex
 def main(args):
     # TODO: refactor into class so archive_path etc can be shared
     config = parse_config()
