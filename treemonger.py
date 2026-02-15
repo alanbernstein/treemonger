@@ -37,7 +37,6 @@ from renderers.tk import init_app
 # - "restore this file" after moving to trash
 # - undo move-to-trash actions
 # - show hover info in status bar
-# - highlight specific filetype, file extension
 
 # make --exclude-dirs work with --file (need to filter before render, rather than during scan)
 

@@ -640,12 +640,13 @@ class TreemongerApp(object):
         m = tk.Menu(self.master, tearoff = 0)
         m.add_command(label=rect['path'], foreground='grey', command=lambda: None)
         m.add_separator()
-        m.add_command(label="info", underline=0, command=lambda: self.info(ev))
-        m.add_command(label="copy path", underline=0, command=lambda: self.copy_path(ev))
-        m.add_command(label="open location", underline=0, command=lambda: self.open_location(ev))
-        m.add_command(label="refresh", underline=0, command=lambda: self.refresh(ev))
+        m.add_command(label="info", accelerator="i", command=lambda: self.info(ev))
+        m.add_command(label="copy path", accelerator="c", command=lambda: self.copy_path(ev))
+        m.add_command(label="open file", command=lambda: self.open_file(ev))
+        m.add_command(label="open location", accelerator="o", command=lambda: self.open_location(ev))
+        m.add_command(label="refresh", accelerator="r", command=lambda: self.refresh(ev))
         m.add_separator()
-        m.add_command(label="move to trash", underline=8, command=lambda: self.trash_path(ev))
+        m.add_command(label="move to trash", accelerator="t", command=lambda: self.trash_path(ev))
         # m.add_separator()
         # m.add_command(label="add to delete queue", underline=0, command=lambda: self.add_to_queue(ev, "delete"))
         # m.add_command(label="print queue", underline=0, command=lambda: self.print_queue(ev))
@@ -744,23 +745,22 @@ class TreemongerApp(object):
             logger.error('  install with: pip install pyperclip')
 
     def open_file(self, ev):
+        """Open the file/directory with the system default application."""
         rect = self._find_rect(ev.x, ev.y)
         if not rect:
             return
-        logger.info('  open file: "%s"' % (rect['path']))
+        logger.info('  open file: "%s"' % rect['path'])
         open_file(rect['path'])
 
     def open_location(self, ev):
+        """Open the containing directory (or the directory itself) in the file manager."""
         rect = self._find_rect(ev.x, ev.y)
         if not rect:
-            logger.trace("skip")
             return
         if rect['type'] == 'directory':
             location = rect['path']
-            logger.trace(f"open dir: {location}")
         else:
             location = os.path.dirname(rect['path'])
-            logger.trace(f"open parent: {location}")
         logger.info('  open location: "%s"' % location)
         open_file(location)
 
