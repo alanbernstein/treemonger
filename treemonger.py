@@ -25,9 +25,8 @@ from logger import logger, set_verbosity
 from utils import format_bytes
 from scan import get_directory_tree, print_directory_tree, tree_to_dict, dict_to_tree
 from subdivide import compute_rectangles
-from renderers.tk import init_app
+from renderers import tk as tk_renderer
 
-# from ipdb import iex
 
 # MAJOR TODOs:
 # - text rendering (renderers.tk.TreemongerApp.render_rect()):
@@ -60,10 +59,9 @@ if not os.path.exists(config_file_path):
 NOW = dt.strftime(dt.now(), '%Y%m%d-%H%M%S')
 HOST = os.getenv('MACHINE', socket.gethostname())
 
-#@iex
 def main(args):
     # TODO: refactor into class so archive_path etc can be shared
-    config = parse_config()
+    config = parse_config_file()
     config_file_flags = config['flags']
 
     root, cli_flags = parse_args(args)
@@ -116,7 +114,8 @@ def main(args):
             return t
 
     realroot = os.path.realpath(root)
-    archive_filename = get_archive_location(flags, realroot, HOST, NOW)
+    archive_filename = expand_filename_pattern(flags.get('archive-name-pattern', ''), realroot, HOST, NOW)
+
     archive_path = os.path.dirname(archive_filename)
 
     if flags.get('file-latest', False):
@@ -150,50 +149,34 @@ def main(args):
 
     trash_log_pattern = flags.get('trash-log-pattern', None)
     if trash_log_pattern:
-        config["trash-log-file"] = get_trashlog_location(trash_log_pattern, realroot, HOST, NOW)
+        config["trash-log-file"] = expand_filename_pattern(trash_log_pattern, realroot, HOST, NOW)
         trash_path = os.path.dirname(config["trash-log-file"])
         os.makedirs(trash_path, exist_ok=True)
 
-    title = os.path.realpath(root)
-    init_app(scan_func, compute_rectangles, config, title=title)
+    # one run can invoke multiple renderers, e.g. write file and display app
+
+    if 'tk' in flags['renderer']:
+        logger.info('starting tk renderer')
+        title = os.path.realpath(root)
+        tk_renderer.init_app(scan_func, compute_rectangles, config, title=title)
 
 
-def get_archive_location(flags, rootpath, host, timestamp):
-    if rootpath == '/':
-        # prevent clobber
-        rootpath = 'root'
-    rootpath_slug = rootpath[1:].replace('/', '-')
-    pattern = flags.get('archive-name-pattern', '')
-    if pattern:
-        archive_basename = pattern
-        archive_basename = archive_basename.replace('%host', HOST)
-        archive_basename = archive_basename.replace('%root', rootpath_slug)
-        archive_basename = archive_basename.replace('%timestamp', NOW)
-    else:
-        return ''
-
-    archive_filename = '%s/%s' % (
-        os.path.expanduser(flags['archive-base-path']),
-        archive_basename,
-    )
-    return archive_filename
-
-def get_trashlog_location(pattern, rootpath, host, timestamp):
-    # TODO consolidate this with get_archive_location
+def expand_filename_pattern(pattern, rootpath, host, timestamp):
     if rootpath == '/':
         # prevent clobber
         rootpath = 'root'
     rootpath_slug = rootpath[1:].replace('/', '-')
     if pattern:
-        trashlog_file = pattern
-        trashlog_file = trashlog_file.replace('%host', HOST)
-        trashlog_file = trashlog_file.replace('%root', rootpath_slug)
-        trashlog_file = trashlog_file.replace('%timestamp', NOW)
-        trashlog_file = os.path.expanduser(trashlog_file)
+        fname = pattern
+        fname = fname.replace('%host', HOST)
+        fname = fname.replace('%root', rootpath_slug)
+        fname = fname.replace('%timestamp', NOW)
+        fname = os.path.expanduser(fname)
     else:
         return ''
 
-    return trashlog_file
+    return fname
+
 
 def get_total_children(t):
     if t.children:
@@ -202,7 +185,7 @@ def get_total_children(t):
         return 1
 
 
-def parse_config():
+def parse_config_file():
     logger.info('loading config from %s' % config_file_path)
     with open(config_file_path) as f:
         config = json.load(f)
@@ -216,6 +199,7 @@ def parse_args(args):
         'exclude-dirs': [],
         'exclude-files': [],
         'exclude-filters': [],
+        'renderer': [],
     }
 
     if len(args) == 1:
@@ -225,6 +209,8 @@ def parse_args(args):
     for arg in args[1:]:
         if arg.startswith('-'):
             flags.append(arg)
+            if arg.startswith('--renderer=') or arg.startswith('-r='):
+                cli_flags['renderer'].append(arg.split('=')[1])
             if arg.startswith('--exclude-dir=') or arg.startswith('-d='):
                 cli_flags['exclude-dirs'].append(arg.split('=')[1])
             if arg.startswith('--exclude-file='):
