@@ -62,7 +62,16 @@ Config sections include:
 - tk_renderer: low-level rendering parameters; adjust these at your own risk
 - colormap (not yet implemented)
 
-# UI
+# Renderers
+treemonger supports multiple renderer options, including:
+- `tk` tkinter GUI app
+- `svg-basic` output to a basic SVG file
+
+to use:
+- set the `renderer` value in the 'flags' section of your config file
+- pass `-r=svg-basic` at the command line
+
+# TK UI
 
 UI actions are customizable, with default configuration:
 
@@ -75,14 +84,13 @@ UI actions are customizable, with default configuration:
 - "Down": `zoom_in` (down arrow)
 - "Up": `zoom_out` (up arrow)
 - "c": `copy_path`
-- "d": `delete_tree` ($`{\color{red}WORK\ IN\ PROGRESS,\ SET\ SAFE\_MODE=False\ TO\ USE}`$)
 - "i": `info`
 - "m": `cycle_mode` (not yet implemented)
 - "o": `open_location`
 - "q": `quit`
 - "r": `refresh`
 - "ctrl+r": `refresh`
-- "t": `zoom_top`
+- "t": `trash`
 
 Actions are simple member functions in renderers/tk.py:TreemongerApp.
 
@@ -92,6 +100,5 @@ Modifier keys are supported. Check `config.json` for examples.
 
 # future work
 
-- refactor things to enable delete/refresh to work properly
 - fix glitchy rendering/clipping (probably requires a new rendering engine)
 - different display/sizing modes

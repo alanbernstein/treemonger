@@ -36,17 +36,32 @@
         "h": "show_help"
     },
     "tk_renderer": {
+        "dir_text_offset": 6,
+        "highlight_color": ["#7f00bf", "#a040df", "#5f008f"],
+        "highlight_text_color": "#ffffff",
+        "max_filesystem_depth": 16,
+        "min_box_size": 10,
+        "show_console": true,
+        "size_mode": "bytes",
         "text_offset_x": 3,
         "text_offset_y": 3,
-        "dir_text_offset": 6,
         "text_size": 8,
         "xpad": 0,
-        "ypad": 0,
+        "ypad": 0
+    },
+    "svg-renderer": {
+        "filename-pattern": "~/treemonger/%host/%root-%timestamp.svg",
+        "width": 1200,
+        "height": 800,
+
         "min_box_size": 10,
+        "max_rectangles": 1000,
+
         "max_filesystem_depth": 16,
+        "text_size": 8,
+        "dir_text_offset": 6,
         "size_mode": "bytes",
-        "show_console": true,
-        "highlight_color": ["#7f00bf", "#a040df", "#5f008f"],
-        "highlight_text_color": "#ffffff"
+        "xpad": 0,
+        "ypad": 0
     }
 }

@@ -26,6 +26,7 @@ from utils import format_bytes
 from scan import get_directory_tree, print_directory_tree, tree_to_dict, dict_to_tree
 from subdivide import compute_rectangles
 from renderers import tk as tk_renderer
+from renderers import svg_basic
 
 
 # MAJOR TODOs:
@@ -154,6 +155,10 @@ def main(args):
         os.makedirs(trash_path, exist_ok=True)
 
     # one run can invoke multiple renderers, e.g. write file and display app
+    if 'svg-basic' in flags['renderer']:
+        logger.info('starting svg-basic renderer')
+        config['svg-renderer']['filename'] = expand_filename_pattern(config['svg-renderer']['filename-pattern'], realroot, HOST, NOW)
+        svg_basic.render(scan_func, compute_rectangles, config)
 
     if 'tk' in flags['renderer']:
         logger.info('starting tk renderer')
