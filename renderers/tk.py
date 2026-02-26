@@ -981,12 +981,15 @@ def init_app(scan_func, subdivide_func, config, title, width=None, height=None):
     # an off-the-shelf vis library for that? not sure if anything exists that
     # would produce the interactivity i'd like to see in an svg)
 
-    root = tk.Tk()
+    # className sets WM_CLASS on Linux/GNOME, allowing the window manager to
+    # match this window to a .desktop file with StartupWMClass=treemonger.
+    root = tk.Tk(className='treemonger')
     current_dir = os.path.dirname(os.path.abspath(__file__))
-    icon_fname = current_dir + "/../treemonger-icon.png"
-    icon_image = Image.open(icon_fname)
-    icon = ImageTk.PhotoImage(icon_image)
-    root.iconphoto(False, ImageTk.PhotoImage(file=icon_fname))
+    icon_fname = os.path.join(current_dir, '..', 'treemonger-icon.png')
+    icon = ImageTk.PhotoImage(file=icon_fname)
+    root.iconphoto(True, icon)
+
+
     app = TreemongerApp(root, title, scan_func, subdivide_func, config, width, height)
     app._render()
     root.mainloop()

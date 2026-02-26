@@ -30,7 +30,7 @@ one hard requirement:
 can be used if available:
 - pyperclip (clipboard functionality)
 - magic (additional file details)
-
+- send2trash (multi-platform support to trash files from within GUI)
 
 # run
 
@@ -66,6 +66,8 @@ Config sections include:
 treemonger supports multiple renderer options, including:
 - `tk` tkinter GUI app
 - `svg-basic` output to a basic SVG file
+- `svg-interactive` output to an interactive SVG file (work in progress)
+- `matplotlib` draw to matplotlib plot window, use for testing
 
 to use:
 - set the `renderer` value in the 'flags' section of your config file
