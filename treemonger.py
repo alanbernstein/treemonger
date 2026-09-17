@@ -60,7 +60,9 @@ if not os.path.exists(config_file_path):
 NOW = dt.strftime(dt.now(), '%Y%m%d-%H%M%S')
 HOST = os.getenv('MACHINE', socket.gethostname())
 
-def main(args):
+def main(args=None):
+    if args is None:
+        args = sys.argv
     # TODO: refactor into class so archive_path etc can be shared
     config = parse_config_file()
     config_file_flags = config['flags']
@@ -86,6 +88,9 @@ def main(args):
     logger.debug(f"full_flags:\n{flags_str}")
     # logger.debug(f"full flags: %s" % json.dumps(flags, indent=2))
 
+    realroot = os.path.realpath(root)
+    archive_filename = expand_filename_pattern(flags.get("archive-name-pattern", ""), realroot, HOST, NOW)
+    archive_path = os.path.dirname(archive_filename)
 
     if 'file' in flags:
         
@@ -108,16 +113,35 @@ def main(args):
                 skip_mount=flags['skip-mount'],
             )
             t1 = dt.now()
+            for f in _scan_filters:
+                logger.removeFilter(f)
+                f.flush(logger)
 
             delta_t = (t1 - t0).seconds + (t1 - t0).microseconds/1e6
             logger.info('%f sec to scan %s / %s files' %
                 (delta_t, format_bytes(t.size), get_total_children(t)))
+
+            # archive
+            if not flags.get('file', False) and flags['save-to-archive']:
+                archive_data = {
+                    'tree': tree_to_dict(t),
+                    'root': realroot,
+                    'host': HOST,
+                    'options': flags,
+                    'scan_timestamp': NOW,
+                    'scan_duration_seconds': delta_t,
+                }
+
+                logger.info('archiving results to:\n  %s' % archive_filename)
+                try:
+                    if not os.path.exists(archive_path):
+                        os.mkdir(archive_path)
+                    with open(archive_filename, 'w') as f:
+                        json.dump(archive_data, f)
+                except Exception as exc:
+                    logger.error(exc)
+
             return t
-
-    realroot = os.path.realpath(root)
-    archive_filename = expand_filename_pattern(flags.get('archive-name-pattern', ''), realroot, HOST, NOW)
-
-    archive_path = os.path.dirname(archive_filename)
 
     if flags.get('file-latest', False):
         fname = get_latest_file_for_pwd(archive_path)
@@ -127,26 +151,6 @@ def main(args):
 
         logger.info('using latest recorded file (%s): %s' % (ts_str, fname))
         flags['file'] = fname
-
-    logger.info('skipping archive during refactor')
-    # if not config.flags.get('file', False) and config.flags['save-to-archive']:
-    #     data = {
-    #         'tree': tree_to_dict(t),
-    #         'root': realroot,
-    #         'host': HOST,
-    #         'options': flags,
-    #         'scan_timestamp': NOW,
-    #         'scan_duration_seconds': delta_t,
-    #     }
-
-    #     logger.info('archiving results to:\n  %s' % archive_filename)
-    #     try:
-    #         if not os.path.exists(archive_path):
-    #             os.mkdir(archive_path)
-    #         with open(archive_filename, 'w') as f:
-    #             json.dump(data, f)
-    #     except Exception as exc:
-    #         logger.error(exc)
 
     trash_log_pattern = flags.get('trash-log-pattern', None)
     if trash_log_pattern:

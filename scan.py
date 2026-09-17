@@ -119,6 +119,7 @@ def get_directory_tree(path,
         return t
     base = os.path.basename(path)
     size = 0
+    pathclean = path.removeprefix("./")
 
     if os.path.islink(path):
         # symlink
@@ -143,7 +144,7 @@ def get_directory_tree(path,
             import ipdb; ipdb.set_trace()
         for d in exclude_dirs:
             # logger.debug(f'exclude-dir: "{d}"')
-            if realpath.startswith(d):
+            if pathclean.startswith(d):
                 # logger.debug(f'  skip "{realpath}"')
                 t.details['skip'] = 'exclude_dir'
                 return t
