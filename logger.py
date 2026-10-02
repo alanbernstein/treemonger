@@ -45,6 +45,35 @@ def trace(self, message, *args, **kwargs):
 logging.Logger.gui_info = gui_info
 logging.Logger.trace = trace
 
+class AggregatingFilter(logging.Filter):
+    """Suppress repeated messages matching a pattern, emit a summary when flushed."""
+    def __init__(self, pattern):
+        super().__init__()
+        self.pattern = pattern
+        self.count = 0
+        self.examples = []
+        self.max_examples = 3
+
+    def filter(self, record):
+        msg = record.getMessage()
+        if self.pattern in msg:
+            self.count += 1
+            if len(self.examples) < self.max_examples:
+                self.examples.append(msg)
+            return False
+        return True
+
+    def flush(self, target_logger):
+        """Emit a single summary line, then reset."""
+        if self.count == 0:
+            return
+        target_logger.info(f"Skipped {self.count} paths ({self.pattern})")
+        for ex in self.examples:
+            target_logger.debug(f"  e.g. {ex}")
+        self.count = 0
+        self.examples = []
+
+
 handler = logging.StreamHandler(sys.stderr)
 handler.setFormatter(ColoredFormatter('%(levelname)s | %(message)s'))
 

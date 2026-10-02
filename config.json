@@ -8,6 +8,7 @@
         "save-to-archive": true,
         "skip-mount": false,
         "trash-log-pattern": "~/treemonger/%host-trashed/%timestamp.txt",
+        "log-aggregate": ["Permission denied", "Operation not permitted"],
         "verbosity": 0
     },
     "color_cycle": ["#ff7f7f", "#ffbf7f", "#ffff00", "#7fff7f", "#7fffff", "#bfbfff", "#bfbfbf", "#ff7fff"],

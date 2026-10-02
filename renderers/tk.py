@@ -677,7 +677,7 @@ class TreemongerApp(object):
 
     def refresh(self, ev):
         self.tree = self.scan_func()
-        logger.trace('  refresh')
+        logger.info('  refresh')
         self._render()
 
     def zoom_top(self, ev):

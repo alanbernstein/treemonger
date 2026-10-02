@@ -21,7 +21,7 @@ import pathlib
 import socket
 import sys
 
-from logger import logger, set_verbosity
+from logger import logger, set_verbosity, AggregatingFilter
 from utils import format_bytes
 from scan import get_directory_tree, print_directory_tree, tree_to_dict, dict_to_tree
 from subdivide import compute_rectangles
@@ -103,7 +103,11 @@ def main(args=None):
             save_to_archive = False
             return t
     else:
+        _scan_filters = [AggregatingFilter(p) for p in flags.get('log-aggregate', [])]
+
         def scan_func():
+            for f in _scan_filters:
+                logger.addFilter(f)
             t0 = dt.now()
             t = get_directory_tree(
                 root,
