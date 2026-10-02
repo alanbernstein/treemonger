@@ -20,6 +20,8 @@ example:
 
 # install
 
+## pip
+
 ```
 pip install -r requirements.txt
 ```
@@ -31,6 +33,13 @@ can be used if available:
 - pyperclip (clipboard functionality)
 - magic (additional file details)
 - send2trash (multi-platform support to trash files from within GUI)
+
+## uv
+
+One thing that worked, on WSL, to support font anti-aliasing
+```
+uv tool install --editable . --python /usr/bin/python3 --force
+```
 
 # run
 

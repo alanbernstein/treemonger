@@ -494,7 +494,7 @@ class TreemongerApp(object):
 
         clipped_text = shorten(rect['text'], dx, self.config['tk_renderer']['text_size'])
         text_id = self.canv.create_text(text_x, text_y, text=clipped_text, fill=text_fill,
-                              anchor=anchor, font=("Helvectica", self.config['tk_renderer']['text_size']))
+                              anchor=anchor, font=("Helvetica", self.config['tk_renderer']['text_size']))
 
         # Store canvas item IDs for fast partial updates
         self.canvas_items[rect['path']] = {
